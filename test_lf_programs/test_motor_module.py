@@ -1,7 +1,6 @@
 #!/usr/bin/env python3
 """
-ACT for blinking -> test inside a Nix develop shell.
-Hardcoded for Blink.lf.
+ACT for Motors -> test inside a Nix shell.
 """
 
 import subprocess
@@ -26,7 +25,7 @@ import math
 
 os.environ["QT_QPA_PLAPTFORM"] = "offscreen"
 
-CAMERA_INDEX = 2
+#CAMERA_INDEX = 2
 #HIGH_RESOLUTION = (1920, 1080)
 ROI = [250, 420, 320, 450]
 
@@ -38,6 +37,17 @@ RED_LOWER1 = np.array([0, 100, 100])
 RED_UPPER1 = np.array([10, 255, 255])
 RED_LOWER2 = np.array([160, 100, 100])
 RED_UPPER2 = np.array([179, 255, 255])
+
+flag = 0
+
+def find_camera_index(max_index=10):
+    #i = 1
+    for i in range(max_index):
+        cap = cv2.VideoCapture(i)
+        if cap.isOpened():
+            cap.release()
+            return i
+    return None
 
 def plot():
     return
@@ -52,15 +62,26 @@ def motor_speed(num):
         actual_rpm = 80
     else:
         actual_rpm = 0
-    
-    cap = cv2.VideoCapture(CAMERA_INDEX, cv2.CAP_V4L2)
+    '''
+    cam_index = find_camera_index()
+    if cam_index is not None:
+        flag = cam_index
+        #print(f"Camera found at index {cam_index}")
+    else:
+        print("No camera found")
+    '''
+    # TODO: Will modify this part of code later.
+    # The logic only applies when there are multiple camera modules. However, that would either need to be addressed or
+    # given as a constraint since the testing platform is controlled by ACT.
+    cam_index = 2     
+    cap = cv2.VideoCapture(cam_index, cv2.CAP_V4L2)
     if not cap.isOpened():
         print("Error: Could not open camera.")
         return
-    
-    print("Width:", cap.get(cv2.CAP_PROP_FRAME_WIDTH))
-    print("Height:", cap.get(cv2.CAP_PROP_FRAME_HEIGHT))
-    print("FPS:", cap.get(cv2.CAP_PROP_FPS))
+
+    #print("Width:", cap.get(cv2.CAP_PROP_FRAME_WIDTH))
+    #print("Height:", cap.get(cv2.CAP_PROP_FRAME_HEIGHT))
+    #print("FPS:", cap.get(cv2.CAP_PROP_FPS))
 
     prev_angle = None
     rotations = 0
@@ -147,10 +168,11 @@ def motor_speed(num):
         #if cv2.waitKey(1) & 0xFF == ord('q'):
         #    break
 
-    print(f"RPM: {rpm:.2f}")
+    #print(f"RPM: {rpm:.2f}")
+    print(f"{rpm:.2f}")
 
     cap.release()
-    cv2.destroyAllWindows()
+    #cv2.destroyAllWindows()
 
 def main():
     parser = argparse.ArgumentParser(description="Test for blink program. Give index and -p for plot")
