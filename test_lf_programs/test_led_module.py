@@ -203,14 +203,14 @@ def led_detect2(num):
             
             prev_count = blink_count
 
-            if cv2.waitKey(1) & 0xFF == ord('q'):
-                print("Quit requested.")
-                break
+            #if cv2.waitKey(1) & 0xFF == ord('q'):
+            #    print("Quit requested.")
+            #    break
             
 
     finally:
         cap.release()
-        cv2.destroyAllWindows()
+        #cv2.destroyAllWindows()
     
     period = 0
     total_time = time.time() - start_time
