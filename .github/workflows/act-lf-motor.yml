@@ -104,7 +104,16 @@ jobs:
       - name: Run Test for Motor_1
         id: test1
         working-directory: ${{ github.workspace }}/lf-3pi-template
-        run: python3 test_motor_module.py 1
+        run: |
+          RPM=$(python3 test_motor_module.py 1)
+          echo "Detected RPM: $RPM"
+
+          if awk "BEGIN {exit !($RPM >= 32 && $RPM <= 34)}"; then
+            echo "PASS"
+          else
+            echo "FAIL"
+            exit 1
+          fi
   
   compilemotor2:
     runs-on: [self-hosted, linux, lf-act-ast]
@@ -129,7 +138,16 @@ jobs:
       - name: Run Test for Motor_2
         id: test2
         working-directory: ${{ github.workspace }}/lf-3pi-template
-        run: python3 test_motor_module.py 2
+        run: |
+          RPM=$(python3 test_motor_module.py 2)
+          echo "Detected RPM: $RPM"
+
+          if awk "BEGIN {exit !($RPM >= 59 && $RPM <= 61)}"; then
+            echo "PASS"
+          else
+            echo "FAIL"
+            exit 1
+          fi
 
   compilemotor3:
     runs-on: [self-hosted, linux, lf-act-ast]
@@ -154,7 +172,16 @@ jobs:
       - name: Run Test
         id: test3
         working-directory: ${{ github.workspace }}/lf-3pi-template
-        run: python3 test_motor_module.py 3
+        run: |
+          RPM=$(python3 test_motor_module.py 3)
+          echo "Detected RPM: $RPM"
+
+          if awk "BEGIN {exit !($RPM >= 79 && $RPM <= 81)}"; then
+            echo "PASS"
+          else
+            echo "FAIL"
+            exit 1
+          fi
   
   plotgraph:
     runs-on: [self-hosted, linux, lf-act-ast]

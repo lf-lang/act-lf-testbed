@@ -1,7 +1,6 @@
 #!/usr/bin/env python3
 """
-ACT for blinking -> test inside a Nix develop shell.
-Hardcoded for Blink.lf.
+ACT for LED module -> test inside a Nix shell.
 """
 
 import subprocess
@@ -28,12 +27,21 @@ os.environ["QT_QPA_PLAPTFORM"] = "offscreen"
 GROUP = 3
 MAX_COUNT = 60
 PERIOD = 0.5
-CAMERA_INDEX = 0
+#CAMERA_INDEX = 0
 HIGH_RESOLUTION = (1920, 1080)
 ROI = [250, 420, 320, 450]
 DEBOUNCE_TIME = 0.1
 INACTIVITY_TIMEOUT = 5.0
 MAX_IDLE_TIME = 10.0
+flag = 1
+
+def find_camera_index(max_index=10):
+    for i in range(max_index):
+        cap = cv2.VideoCapture(i)
+        if cap.isOpened():
+            cap.release()
+            return i
+    return None
 
 def plot():
     #ACT_HOME = Path.home()/"pololu"
@@ -77,12 +85,32 @@ def led_detect2(num):
         Actual_Period = 0.5
     else:
         Actual_Period = 1
+
     
-    cap = cv2.VideoCapture(CAMERA_INDEX)
+    cam_index = find_camera_index()
+    if cam_index is not None:
+        flag = 1
+        #print(f"Camera found at index {cam_index}")
+    else:
+        print("No camera found")
+
+    # TODO: Will modify this part of code later.
+    # The logic only applies when there are multiple camera modules. However, that would either need to be addressed or
+    # given as a constraint since, the testing platform is controlled by ACT.
+    #cam_index = 0
+    cap = cv2.VideoCapture(cam_index)
     if not cap.isOpened():
-        print("Error: Could not open camera.")
-        return
+        #print("Error: Could not open camera.")
+        time.sleep(2)
+        for i in range (2):
+            cap = cv2.VideoCapture(cam_index)
+            if not cap.isOpened():
+                continue
+        #return
     
+    if not cap.isOpened():
+        return
+
     blink_count = 0
     is_on = False
     last_blink_time = time.time()
@@ -92,7 +120,7 @@ def led_detect2(num):
     bc = []
     prev_count = 0
 
-    print("Monitoring for orange LED blinks... Press 'q' to quit.")
+    #print("Monitoring for orange LED blinks... Press 'q' to quit.")
 
     try:
         while blink_count < MAX_COUNT:
@@ -131,7 +159,7 @@ def led_detect2(num):
 
             # Inactivity condition no LED blink happens
             if blink_count > 0 and (current_time - last_blink_time > INACTIVITY_TIMEOUT):
-                print("No blinks detected for a while!!..Stopping.")
+                #print("No blinks detected for a while!!..Stopping.")
                 break
 
             #display ROI
@@ -186,17 +214,19 @@ def led_detect2(num):
     
     period = 0
     total_time = time.time() - start_time
-    print(f"\nTotal time: {total_time:.2f}s, Total blinks: {blink_count}")
+    #print(f"\nTotal time: {total_time:.2f}s, Total blinks: {blink_count}")
     if blink_count > 1:
         freq = (blink_count )/ (time.time() - start_time)
         period = round(1/freq,1)
-        print(f"Blink frequency: ~{freq:.2f} Hz")
-        print(f"Time period: {period:.2f} sec")
+        #print(f"Blink frequency: ~{freq:.2f} Hz")
+        #print(f"Time period: {period:.2f} sec")
+        print(f"{period:.2f}")
     else:
         freq = 0
-        print(f"Blink frequency: ~{freq:.2f} Hz")
-        print("Time period is not defined")
-
+        #print(f"Blink frequency: ~{freq:.2f} Hz")
+        #print("Time period is not defined")
+        print("0.0")
+    
 
 CLEAN_FILE = "blink_results.csv"
 

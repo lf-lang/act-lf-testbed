@@ -106,7 +106,17 @@ jobs:
       - name: Run Test
         id: test1
         working-directory: ${{ github.workspace }}/lf-3pi-template
-        run: python3 test_led_module.py 1
+        run: |
+          PERIOD=$(python3 test_led_module.py 1)
+          echo "Detected Period: $PERIOD"
+
+          if awk "BEGIN {exit !($PERIOD >= 0.19 && $PERIOD <= 0.21)}"; then
+            echo "PASS"
+          else
+            echo "FAIL"
+            exit 1
+          fi
+
   
   compileblink2:
     runs-on: [self-hosted, linux, lf-act-ast]
@@ -131,7 +141,16 @@ jobs:
       - name: Run Test
         id: test2
         working-directory: ${{ github.workspace }}/lf-3pi-template
-        run: python3 test_led_module.py 2
+        run: |
+          PERIOD=$(python3 test_led_module.py 2)
+          echo "Detected Period: $PERIOD"
+
+          if awk "BEGIN {exit !($PERIOD >= 0.49 && $PERIOD <= 0.51)}"; then
+            echo "PASS"
+          else
+            echo "FAIL"
+            exit 1
+          fi
 
   compileblink3:
     runs-on: [self-hosted, linux, lf-act-ast]
@@ -156,7 +175,16 @@ jobs:
       - name: Run Test
         id: test3
         working-directory: ${{ github.workspace }}/lf-3pi-template
-        run: python3 test_led_module.py 3
+        run: |
+          PERIOD=$(python3 test_led_module.py 3)
+          echo "Detected Period: $PERIOD"
+
+          if awk "BEGIN {exit !($PERIOD >= 0.99 && $PERIOD <= 1.01)}"; then
+            echo "PASS"
+          else
+            echo "FAIL"
+            exit 1
+          fi
   
   plotgraph:
     runs-on: [self-hosted, linux, lf-act-ast]
