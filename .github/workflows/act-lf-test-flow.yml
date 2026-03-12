@@ -15,5 +15,15 @@ jobs:
 
   motor-test:
     needs: led-test
-    if: contains(github.event.pull_request.labels.*.name, 'act-lf-motor') || needs.call-led-test.result == 'skipped'
+    if: always() && (contains(github.event.pull_request.labels.*.name, 'act-lf-motor') || needs.call-led-test.result == 'skipped')
     uses: ./.github/workflows/act-lf-motor.yml
+  
+  imu-test:
+    needs: motor-test
+    if: always() && (contains(github.event.pull_request.labels.*.name, 'act-lf-imu') || needs.call-motor-test.result == 'skipped')
+    uses: ./.github/workflows/act-lf-imu.yml
+
+  bump-test:
+    needs: imu-test
+    if: always() && (contains(github.event.pull_request.labels.*.name, 'act-lf-bump') || needs.call-imu-test.result == 'skipped')
+    uses: ./.github/workflows/act-lf-bump.yml
