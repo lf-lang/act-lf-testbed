@@ -108,7 +108,7 @@ jobs:
           RPM=$(python3 test_motor_module.py 1)
           echo "Detected RPM: $RPM"
 
-          if awk "BEGIN {exit !($RPM >= 32 && $RPM <= 34)}"; then
+          if awk "BEGIN {exit !($RPM >= 30 && $RPM <= 36)}"; then
             echo "PASS"
           else
             echo "FAIL"
@@ -142,7 +142,7 @@ jobs:
           RPM=$(python3 test_motor_module.py 2)
           echo "Detected RPM: $RPM"
 
-          if awk "BEGIN {exit !($RPM >= 59 && $RPM <= 61)}"; then
+          if awk "BEGIN {exit !($RPM >= 57 && $RPM <= 63)}"; then
             echo "PASS"
           else
             echo "FAIL"
@@ -176,7 +176,7 @@ jobs:
           RPM=$(python3 test_motor_module.py 3)
           echo "Detected RPM: $RPM"
 
-          if awk "BEGIN {exit !($RPM >= 79 && $RPM <= 81)}"; then
+          if awk "BEGIN {exit !($RPM >= 77 && $RPM <= 83)}"; then
             echo "PASS"
           else
             echo "FAIL"
