@@ -1,0 +1,37 @@
+target C {
+  platform: {
+    name: "rp2040",
+    board: "pololu_3pi_2040_robot"
+  },
+  threading: false,
+  //files: ["../../robot-lib/"],                      // Needed to find imu.h
+  //cmake-include: ["../../robot-lib/robot-lib.txt"]  // Needed to find imu.h
+}
+
+preamble {=
+  #include <math.h>
+=}
+
+reactor tilt {
+  input x:float;
+  input y:float;
+  input z:float;
+  
+  output p:double;
+  output r:double;
+  output t:double;
+  
+  reaction(x, y, z) -> p, r, t{=
+    double t1 = x->value;
+    double t2 = y->value;
+    double t3 = z->value;
+
+    double o1 = ((atan(t1/(sqrt(t2*t2)+(t3*t3)))) * 57.3);
+    double o2 = ((atan(t2/(sqrt(t1*t1)+(t3*t3)))) * 57.3);
+    double o3 = ((atan(t3/(sqrt(t1*t1)+(t2*t2)))) * 57.3);
+
+    lf_set(p, o1);
+    lf_set(r, o2);
+    lf_set(t, o3);
+  =}
+}
