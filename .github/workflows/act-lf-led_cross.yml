@@ -128,7 +128,7 @@ jobs:
         run: |
           #ls && ls src/
           cp ${{ github.workspace }}/act-lf-testbed/test_lf_programs/*.py ${{ github.workspace }}/act-lf-testbed/lf-3pi-template
-          cp ${{ github.workspace }}/src/Blink* ${{ github.workspace }}/act-lf-testbed/lf-3pi-template/src
+          cp ${{ github.workspace }}/act-test/src/Blink* ${{ github.workspace }}/act-lf-testbed/lf-3pi-template/src/
 
   compileblink1:
     runs-on: [self-hosted, linux, lf-act-ast]
