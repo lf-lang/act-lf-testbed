@@ -1,0 +1,10 @@
+name: TEST_FROM_OTHER_REPO 
+
+on:
+  workflow_call:
+
+jobs:
+  led-test:
+    if: contains(github.event.pull_request.labels.*.name, 'act-lf-led')
+    uses: ./.github/workflows/act-lf-led_cross.yml
+    secrets: inherit
