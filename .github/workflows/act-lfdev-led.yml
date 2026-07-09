@@ -20,13 +20,13 @@ jobs:
       - name: Checkout current repo
         uses: actions/checkout@v5
         with:
-          path: lingua-franca
+          path: act-test
           clean: true
           fetch-depth: 0
           submodules: recursive
 
       - name: Unshallow submodules (current repo)
-        working-directory: ${{ github.workspace }}/lingua-franca
+        working-directory: ${{ github.workspace }}/act-test
         run: |
           git submodule foreach '
             echo "Fixing submodule $name"
@@ -137,7 +137,7 @@ jobs:
     steps:
       - name: Compile Blink - 1
         working-directory: ${{ github.workspace }}/act-lf-testbed/lf-3pi-template
-        run: nix develop --command ${{ github.workspace }}/lingua-franca/bin/lfc-dev src/Blink_1.lf
+        run: nix develop --command ${{ github.workspace }}/act-test/bin/lfc-dev src/Blink_1.lf
   
   flashblink1:
     runs-on: [self-hosted, linux, lf-act-ast]
