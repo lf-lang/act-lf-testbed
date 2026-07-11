@@ -39,6 +39,14 @@ The script "env_setup.py" needs to be run manually since many of the commands
 require user permission. The next step would be to host the runner in your local 
 machine and it will await the trigger to start testing.
 
+## Writing and adding tests:
+
+See [docs/writing-tests.md](docs/writing-tests.md) for how the label-gated
+workflow suite is put together, and step-by-step instructions for adding a
+new test variant, a new hardware module, or wiring up a new repo for
+cross-repo testing (`act-lf-led`, `act-lf-motor`, `act-lf-imu`, `act-lf-bump`
+labels and friends).
+
 ## TODO:
 
 1. Adding test cases for Bump sensor and display, IMU paired with display.
