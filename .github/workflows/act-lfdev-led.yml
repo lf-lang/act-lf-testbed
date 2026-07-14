@@ -20,13 +20,14 @@ jobs:
       - name: Checkout current repo
         uses: actions/checkout@v5
         with:
-          path: act-test
+          repository: lf-lang/lingua-franca
+          path: lingua-franca
           clean: true
           fetch-depth: 0
           submodules: recursive
 
       - name: Unshallow submodules (current repo)
-        working-directory: ${{ github.workspace }}/act-test
+        working-directory: ${{ github.workspace }}/lingua-franca
         run: |
           git submodule foreach '
             echo "Fixing submodule $name"
@@ -166,7 +167,7 @@ jobs:
 #   echo "FAIL"
 #   exit 1
 # fi
-  
+
   plotgraph:
     runs-on: [self-hosted, linux, lf-act-ast]
     needs: [runblink1]
