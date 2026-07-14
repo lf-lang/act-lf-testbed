@@ -138,7 +138,7 @@ jobs:
     steps:
       - name: Compile Blink - 1
         working-directory: ${{ github.workspace }}/act-lf-testbed/lf-3pi-template
-        run: nix develop --command ${{ github.workspace }}/bin/lfc-dev src/Blink_1.lf
+        run: nix develop --command ${{ github.workspace }}/lingua-franca/bin/lfc-dev src/Blink_1.lf
   
   flashblink1:
     runs-on: [self-hosted, linux, lf-act-ast]
