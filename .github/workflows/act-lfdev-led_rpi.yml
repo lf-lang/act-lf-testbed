@@ -95,7 +95,13 @@ jobs:
       - name: Install dependencies
         run: |
           python3 -m venv --system-site-packages .venv
-          echo 'export PYTHONPATH=/usr/local/lib/python3/dist-packages:$PYTHONPATH' >> .venv/bin/activate
+          # Make the custom-built libcamera + pykms bindings visible regardless of
+          # how the interpreter is invoked (no activate needed):
+          SITEDIR=$(.venv/bin/python -c "import sysconfig; print(sysconfig.get_paths()['purelib'])")
+          printf '%s\n%s\n' \
+            "/usr/local/lib/python3/dist-packages" \
+            "/usr/local/lib/aarch64-linux-gnu/python3.12/site-packages" \
+            > "$SITEDIR/local_camera.pth"
           .venv/bin/python -m pip install --upgrade pip
           .venv/bin/pip install opencv-python numpy pandas matplotlib
           .venv/bin/python -c "import sys; print(sys.version)"
