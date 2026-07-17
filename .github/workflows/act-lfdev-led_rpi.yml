@@ -90,32 +90,34 @@ jobs:
       - name: Set up Python ${{ matrix.python-version }}
         uses: actions/setup-python@v5
         with:
-          python-version: ${{ matrix.python-version }}
+           python-version: ${{ matrix.python-version }}
 
       - name: Install dependencies
         run: |
-      - name: Install dependencies
-        run: | 
-          /usr/bin/python3 -m venv --system-site-packages .venv
-          SITEDIR=$(.venv/bin/python -c "import sysconfig; print(sysconfig.get_paths()['purelib'])")
-          printf '%s\n%s\n' \
-            "/usr/local/lib/python3/dist-packages" \
-            "/usr/local/lib/aarch64-linux-gnu/python3.12/site-packages" \
-            > "$SITEDIR/local_camera.pth"
-          .venv/bin/python -m pip install --upgrade pip
-          .venv/bin/pip install opencv-python numpy pandas matplotlib picamera2
-          .venv/bin/python -c "import libcamera, pykms, picamera2; print('OK')"
-          .venv/bin/python -c "import sys; print(sys.version)"
-          .venv/bin/python -c "import cv2; print(cv2.__version__)"
-          .venv/bin/python -c "import numpy; print(numpy.__version__)"
-          .venv/bin/python -c "import pandas; print(pandas.__version__)"
-          .venv/bin/python -c "import matplotlib; print(matplotlib.__version__)"
-          echo ${{ github.workspace }}
-          ls
+          /home/act-runner/camenv/bin/python -c "import libcamera, pykms, picamera2, cv2; print('env OK')"
+      # - name: Install dependencies
+      #   run: |
+      #     unset LD_LIBRARY_PATH
+      #     /usr/bin/python3 -m venv --system-site-packages .venv
+      #     SITEDIR=$(.venv/bin/python -c "import sysconfig; print(sysconfig.get_paths()['purelib'])")
+      #     printf '%s\n%s\n' \
+      #       "/usr/local/lib/python3/dist-packages" \
+      #       "/usr/local/lib/aarch64-linux-gnu/python3.12/site-packages" \
+      #       > "$SITEDIR/local_camera.pth"
+      #     .venv/bin/python -m pip install --upgrade pip
+      #     .venv/bin/pip install opencv-python numpy pandas matplotlib picamera2
+      #     .venv/bin/python -c "import libcamera, pykms, picamera2; print('OK')"
+      #     .venv/bin/python -c "import sys; print(sys.version)"
+      #     .venv/bin/python -c "import cv2; print(cv2.__version__)"
+      #     .venv/bin/python -c "import numpy; print(numpy.__version__)"
+      #     .venv/bin/python -c "import pandas; print(pandas.__version__)"
+      #     .venv/bin/python -c "import matplotlib; print(matplotlib.__version__)"
+      #     echo ${{ github.workspace }}
+      #     ls
 
   filecleanup:
     runs-on: [self-hosted, linux, lf-act-rpi]
-    needs: setup
+    needs: pythonpackages
     steps:
       #- uses: actions/checkout@v5
       - name: Path Setup
@@ -168,9 +170,7 @@ jobs:
         id: test1
         working-directory: ${{ github.workspace }}/act-lf-testbed/lf-3pi-template
         run: |
-          source ${{ github.workspace }}/.venv/bin/activate
-          export LD_LIBRARY_PATH="$(python3 -c 'import sys; print(sys.base_prefix)')/lib:$LD_LIBRARY_PATH"
-          PERIOD=$(python3 test_led_module.py 1)
+          PERIOD=$(/home/act-runner/camenv/bin/python3 test_led_module.py 1)
           echo "Detected Period: $PERIOD"
 
 # if awk "BEGIN {exit !($PERIOD >= 0.19 && $PERIOD <= 0.21)}"; then
@@ -191,9 +191,7 @@ jobs:
       - name: Run Test
         working-directory: ${{ github.workspace }}/act-lf-testbed/lf-3pi-template
         run: |
-          source ${{ github.workspace }}/.venv/bin/activate
-          export LD_LIBRARY_PATH="$(python3 -c 'import sys; print(sys.base_prefix)')/lib:$LD_LIBRARY_PATH"
-          python3 plot_led.py
+          /home/act-runner/camenv/bin/python3 plot_led.py
        
   blinkreportupload:
     runs-on: [self-hosted, linux, lf-act-rpi]
