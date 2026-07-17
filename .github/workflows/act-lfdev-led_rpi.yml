@@ -94,22 +94,22 @@ jobs:
 
       - name: Install dependencies
         run: |
-          python3 -m venv --system-site-packages .venv
-          # Make the custom-built libcamera + pykms bindings visible regardless of
-          # how the interpreter is invoked (no activate needed):
+      - name: Install dependencies
+        run: | 
+          /usr/bin/python3 -m venv --system-site-packages .venv
           SITEDIR=$(.venv/bin/python -c "import sysconfig; print(sysconfig.get_paths()['purelib'])")
           printf '%s\n%s\n' \
             "/usr/local/lib/python3/dist-packages" \
             "/usr/local/lib/aarch64-linux-gnu/python3.12/site-packages" \
             > "$SITEDIR/local_camera.pth"
           .venv/bin/python -m pip install --upgrade pip
-          .venv/bin/pip install opencv-python numpy pandas matplotlib
+          .venv/bin/pip install opencv-python numpy pandas matplotlib picamera2
+          .venv/bin/python -c "import libcamera, pykms, picamera2; print('OK')"
           .venv/bin/python -c "import sys; print(sys.version)"
           .venv/bin/python -c "import cv2; print(cv2.__version__)"
           .venv/bin/python -c "import numpy; print(numpy.__version__)"
           .venv/bin/python -c "import pandas; print(pandas.__version__)"
           .venv/bin/python -c "import matplotlib; print(matplotlib.__version__)"
-          .venv/bin/python -c "import libcamera, pykms, picamera2; print('OK')"
           echo ${{ github.workspace }}
           ls
 
