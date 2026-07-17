@@ -170,7 +170,7 @@ jobs:
         id: test1
         working-directory: ${{ github.workspace }}/act-lf-testbed/lf-3pi-template
         run: |
-          PERIOD=$(/home/act-runner/camenv/bin/python3 test_led_module.py 1)
+          PERIOD=$(/home/act-runner/camenv/bin/python3 test_led_module_rpi.py 1)
           echo "Detected Period: $PERIOD"
 
 # if awk "BEGIN {exit !($PERIOD >= 0.19 && $PERIOD <= 0.21)}"; then
