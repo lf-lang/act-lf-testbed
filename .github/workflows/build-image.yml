@@ -40,6 +40,7 @@ jobs:
         uses: docker/build-push-action@v7
         with:
           context: .
+          file: ./docker/Dockerfile.act-lf
           tags: ${{ env.IMAGE }}
           platforms: linux/arm64
           outputs: type=docker,dest=${{ runner.temp }}/image.tar
