@@ -1,0 +1,70 @@
+# .github/workflows/image-via-artifact.yml
+#
+# No-registry alternative: export the image as a tarball on the GitHub-hosted
+# runner, pass it along as a workflow artifact, and `docker load` it on the
+# self-hosted runner.
+#
+# Useful when the self-hosted machine can't reach a registry, or the image
+# shouldn't be published anywhere. Trade-offs: the whole image is transferred
+# on every run (a registry only sends changed layers), it counts toward your
+# artifact storage, and it's one platform per tarball.
+
+name: Build in cloud, run on self-hosted (artifact)
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+
+#Check the runner labels with `gh run view --log` or `gh run view --json jobs` and adjust below.
+
+env:
+  IMAGE: myapp:${{ github.sha }} # local tag only, never pushed anywhere
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+
+      # If the self-hosted runner is ARM, uncomment this and `platforms` below.
+      - uses: docker/setup-qemu-action@v4
+
+      #- uses: docker/setup-buildx-action@v4
+
+      - name: Build and export to a tarball
+        uses: docker/build-push-action@v7
+        with:
+          context: .
+          tags: ${{ env.IMAGE }}
+          platforms: linux/arm64
+          outputs: type=docker,dest=${{ runner.temp }}/image.tar
+
+      - uses: actions/upload-artifact@v7
+        with:
+          name: docker-image
+          path: ${{ runner.temp }}/image.tar
+          retention-days: 1 # only needed for this run
+
+  run:
+    timeout-minutes: 5
+    needs: build
+    runs-on: [self-hosted, linux] # match your runner's labels
+    steps:
+      - uses: actions/download-artifact@v8
+        with:
+          name: docker-image
+          path: ${{ runner.temp }}
+
+      - run: docker load --input "$RUNNER_TEMP/image.tar"
+
+      - run: docker run --rm "$IMAGE" # your command
+
+      # Persistent runners keep their disk between jobs; don't let images pile up.
+      - name: Remove image
+        if: always()
+        run: docker image rm "$IMAGE" || true
