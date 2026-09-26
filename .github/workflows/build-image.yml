@@ -23,18 +23,15 @@ permissions:
 #Check the runner labels with `gh run view --log` or `gh run view --json jobs` and adjust below.
 
 env:
-  IMAGE: myapp:${{ github.sha }} # local tag only, never pushed anywhere
+  IMAGE: myapp:${{ github.sha }} 
 
 jobs:
   build:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v7
-
-      # If the self-hosted runner is ARM, uncomment this and `platforms` below.
       - uses: docker/setup-qemu-action@v4
-
-      #- uses: docker/setup-buildx-action@v4
+      - uses: docker/setup-buildx-action@v4
 
       - name: Build and export to a tarball
         uses: docker/build-push-action@v7
