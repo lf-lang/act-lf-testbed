@@ -13,7 +13,7 @@ name: Build in cloud, run on self-hosted (artifact)
 
 on:
   push:
-    branches: [main]
+    branches: [image-test]
   workflow_dispatch:
 
 permissions:
@@ -50,21 +50,21 @@ jobs:
           path: ${{ runner.temp }}/image.tar
           retention-days: 1 # only needed for this run
 
-  run:
-    timeout-minutes: 5
-    needs: build
-    runs-on: [self-hosted, linux] # match your runner's labels
-    steps:
-      - uses: actions/download-artifact@v8
-        with:
-          name: docker-image
-          path: ${{ runner.temp }}
+  # run:
+  #   timeout-minutes: 5
+  #   needs: build
+  #   runs-on: [self-hosted, linux] # match your runner's labels
+  #   steps:
+  #     - uses: actions/download-artifact@v8
+  #       with:
+  #         name: docker-image
+  #         path: ${{ runner.temp }}
 
-      - run: docker load --input "$RUNNER_TEMP/image.tar"
+  #     - run: docker load --input "$RUNNER_TEMP/image.tar"
 
-      - run: docker run --rm "$IMAGE" # your command
+  #     - run: docker run --rm "$IMAGE" # your command
 
-      # Persistent runners keep their disk between jobs; don't let images pile up.
-      - name: Remove image
-        if: always()
-        run: docker image rm "$IMAGE" || true
+  #     # Persistent runners keep their disk between jobs; don't let images pile up.
+  #     - name: Remove image
+  #       if: always()
+  #       run: docker image rm "$IMAGE" || true
