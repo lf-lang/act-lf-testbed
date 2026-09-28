@@ -1,0 +1,65 @@
+# syntax=docker/dockerfile:1
+#
+# docker/Dockerfile.act-lf-dev
+#
+
+# ---------------------------------------------------------------------------
+# Stage 1: build lfc
+# ---------------------------------------------------------------------------
+FROM --platform=$BUILDPLATFORM eclipse-temurin:17-jdk-noble AS build
+
+RUN apt-get update \
+ && apt-get install -y --no-install-recommends git \
+ && rm -rf /var/lib/apt/lists/*
+
+ARG LF_REPO=https://github.com/lf-lang/lingua-franca.git
+ARG LF_REF=master
+
+WORKDIR /src/lingua-franca
+
+# Shallow clone of the requested ref, with its submodules (reactor-c etc.).
+RUN git init -q . \
+ && git remote add origin "$LF_REPO" \
+ && git fetch -q --depth 1 origin "$LF_REF" \
+ && git checkout -q --detach FETCH_HEAD \
+ && git submodule update -q --init --recursive --depth 1
+
+# The same Gradle task bin/lfc-dev runs before it starts lfc.
+# Result: cli/lfc/build/install/lfc/ with bin/lfc and lib/*.jar.
+RUN ./gradlew --no-daemon :cli:lfc:installDist \
+ && git rev-parse HEAD > cli/lfc/build/install/lfc/LF_COMMIT
+
+# ---------------------------------------------------------------------------
+# Stage 2: the image you run
+# ---------------------------------------------------------------------------
+FROM eclipse-temurin:17-jre-noble
+
+RUN apt-get update \
+ && apt-get install -y --no-install-recommends build-essential cmake git \
+ && rm -rf /var/lib/apt/lists/*
+
+COPY --from=build /src/lingua-franca/cli/lfc/build/install/lfc /opt/lfc
+ENV PATH="/opt/lfc/bin:${PATH}"
+
+# Smoke test: the image build fails unless lfc can compile and run a program.
+RUN <<'EOF'
+set -eux
+cat /opt/lfc/LF_COMMIT
+lfc --version
+mkdir -p /tmp/smoke/src
+cat > /tmp/smoke/src/Smoke.lf <<'LF'
+target C
+
+main reactor Smoke {
+  reaction(startup) {=
+    printf("Lingua Franca is ready.\n");
+  =}
+}
+LF
+cd /tmp/smoke
+lfc src/Smoke.lf
+./bin/Smoke
+rm -rf /tmp/smoke
+EOF
+
+WORKDIR /work
