@@ -2,10 +2,23 @@
 #
 # docker/Dockerfile.act-lf-dev
 #
+# lfc built from source, inside the Nix environment of the Lingua Franca
+# embedded lab (lf-3pi-template): the tools from its shell.nix
+# (arm-none-eabi-gcc, picotool, cmake, openocd, gdb, ...), plus Java 17 to run
+# lfc and Python 3 for the Pico SDK. Every command runs in that environment:
+#
+
+
+#
+# Build arguments:
+#   LF_REF, LF_REPO              Lingua Franca to build (default: master)
+#   TEMPLATE_REF, TEMPLATE_REPO  lab repository whose flake defines the tools
+#                                (default: lf-lang/lf-3pi-template, main)
 
 # ---------------------------------------------------------------------------
 # Stage 1: build lfc
 # ---------------------------------------------------------------------------
+
 FROM --platform=$BUILDPLATFORM eclipse-temurin:17-jdk-noble AS build
 
 RUN apt-get update \
@@ -24,28 +37,64 @@ RUN git init -q . \
  && git checkout -q --detach FETCH_HEAD \
  && git submodule update -q --init --recursive --depth 1
 
-# The same Gradle task bin/lfc-dev runs before it starts lfc.
-# Result: cli/lfc/build/install/lfc/ with bin/lfc and lib/*.jar.
+# The same Gradle task bin/lfc-dev runs. Result: cli/lfc/build/install/lfc/
 RUN ./gradlew --no-daemon :cli:lfc:installDist \
  && git rev-parse HEAD > cli/lfc/build/install/lfc/LF_COMMIT
 
 # ---------------------------------------------------------------------------
-# Stage 2: the image you run
+# Stage 2: the lab's Nix environment, with lfc added
 # ---------------------------------------------------------------------------
-FROM eclipse-temurin:17-jre-noble
+FROM nixos/nix:latest
 
-RUN apt-get update \
- && apt-get install -y --no-install-recommends build-essential cmake git \
- && rm -rf /var/lib/apt/lists/*
+
+RUN mkdir -p /root/.config/nix \
+ && printf '%s\n' \
+      'extra-experimental-features = nix-command flakes' \
+      'filter-syscalls = false' \
+      > /root/.config/nix/nix.conf
+
+# Let git work in a mounted repo owned by a different user.
+RUN git config --global --add safe.directory '*'
+
+ARG TEMPLATE_REPO=https://github.com/lf-lang/lf-3pi-template.git
+ARG TEMPLATE_REF=main
+
+RUN mkdir -p /opt/lab-env \
+ && nix build --out-link /opt/jdk nixpkgs/nixos-25.05#jdk17_headless \
+ && nix build --out-link /opt/python nixpkgs/nixos-25.05#python3 \
+ && git init -q /tmp/lab \
+ && git -C /tmp/lab remote add origin "$TEMPLATE_REPO" \
+ && git -C /tmp/lab fetch -q --depth 1 origin "$TEMPLATE_REF" \
+ && git -C /tmp/lab checkout -q --detach FETCH_HEAD \
+ && rm -rf /tmp/lab/.git \
+ && nix print-dev-env --profile /opt/lab-env/profile path:/tmp/lab > /tmp/lab-env.sh \
+ && grep -qxF 'eval "${shellHook:-}"' /tmp/lab-env.sh \
+ && grep -vxF 'eval "${shellHook:-}"' /tmp/lab-env.sh > /opt/lab-env/env.sh \
+ && rm -rf /tmp/lab /tmp/lab-env.sh /root/.cache/nix \
+ && nix-collect-garbage
 
 COPY --from=build /src/lingua-franca/cli/lfc/build/install/lfc /opt/lfc
-ENV PATH="/opt/lfc/bin:${PATH}"
+ENV PATH=/opt/lfc/bin:/opt/jdk/bin:/opt/python/bin:$PATH
 
-# Smoke test: the image build fails unless lfc can compile and run a program.
+# Entry point: load the lab's environment, then run the command.
+COPY --chmod=755 <<'EOF' /opt/lab-env/enter
+#!/usr/bin/env bash
+source /opt/lab-env/env.sh
+exec "$@"
+EOF
+
+# Smoke test in that environment: the image build fails unless the entry
+# point, lfc and the lab's tools run, and lfc can compile and run a program.
 RUN <<'EOF'
-set -eux
+#!/usr/bin/env bash
+set -e
+/opt/lab-env/enter lfc --version
+source /opt/lab-env/env.sh
+set -x
 cat /opt/lfc/LF_COMMIT
-lfc --version
+arm-none-eabi-gcc --version
+picotool version
+python3 --version
 mkdir -p /tmp/smoke/src
 cat > /tmp/smoke/src/Smoke.lf <<'LF'
 target C
@@ -59,7 +108,10 @@ LF
 cd /tmp/smoke
 lfc src/Smoke.lf
 ./bin/Smoke
+cd /
 rm -rf /tmp/smoke
 EOF
 
 WORKDIR /work
+ENTRYPOINT ["/opt/lab-env/enter"]
+CMD ["bash"]
