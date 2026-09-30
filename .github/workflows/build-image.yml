@@ -9,25 +9,32 @@
 # on every run (a registry only sends changed layers), it counts toward your
 # artifact storage, and it's one platform per tarball.
 
-name: Build in cloud, run on self-hosted (artifact)
+name: Image build and test
 
 on:
   push:
     branches: [image-test]
   workflow_dispatch:
 
-permissions:
-  contents: read
+
+# One run at a time, so two quick pushes can't both build the image.
+# A newer push replaces a run that is still waiting to start.
+concurrency:
+  group: ${{ github.workflow }}
 
 
 #Check the runner labels with `gh run view --log` or `gh run view --json jobs` and adjust below.
 
 env:
-  IMAGE: myapp:${{ github.sha }} 
+  #IMAGE: myapp:${{ github.sha }}
+  IMAGE: act-lf:act-lf-test-docker 
 
 jobs:
   build:
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      actions: write
     steps:
       - uses: actions/checkout@v7
       - uses: docker/setup-qemu-action@v4
@@ -38,7 +45,9 @@ jobs:
         with:
           context: .
           file: ./docker/Dockerfile.act-lf-dev
-          tags: ${{ env.IMAGE }}
+          tags: | 
+            ${{ env.IMAGE }}
+            act-lf:act-lf-test-docker
           platforms: linux/arm64
           outputs: type=docker,dest=${{ runner.temp }}/image.tar
 
@@ -46,7 +55,8 @@ jobs:
         with:
           name: docker-image
           path: ${{ runner.temp }}/image.tar
-          retention-days: 1 # only needed for this run
+          retention-days: 1 # change to 7 if you want to keep it longer and have enough artifact storage.
+
 
   # run:
   #   timeout-minutes: 5
