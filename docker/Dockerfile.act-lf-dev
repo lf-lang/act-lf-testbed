@@ -2,9 +2,9 @@
 #
 # docker/Dockerfile.act-lf-dev
 #
+
 #   docker run --rm -v "$PWD:/work" <image> lfc src/Blink.lf
 #   docker run --rm -it -v "$PWD:/work" <image>        # a shell in it
-#
 
 # Build arguments:
 #   LF_REF, LF_REPO              Lingua Franca to build (default: master)
@@ -15,9 +15,8 @@
 # ---------------------------------------------------------------------------
 # Stage 1: build lfc
 # ---------------------------------------------------------------------------
-# lfc is Java bytecode, so this stage runs natively on the build machine even
-# when the image is for arm64.
-FROM --platform=$BUILDPLATFORM eclipse-temurin:17-jdk-noble AS build
+
+  FROM --platform=$BUILDPLATFORM eclipse-temurin:17-jdk-noble AS build
 
 RUN apt-get update \
  && apt-get install -y --no-install-recommends git \
@@ -64,11 +63,12 @@ COPY <<'EOF' /tmp/env/flake.nix
       forEachSystem = f: nixpkgs.lib.genAttrs [ "x86_64-linux" "aarch64-linux" ]
         (system: f nixpkgs.legacyPackages.${system});
     in {
-      # The compilation tools from the lab's shell.nix. mkShell adds the
+      # The compilation tools from the lab's shell.nix, plus which: lfc
+      # runs `which` to find cmake and fails without it. mkShell adds the
       # host C compiler and make, which the Pico SDK uses to build pioasm.
       devShells = forEachSystem (pkgs: {
         default = pkgs.mkShell {
-          packages = [ pkgs.cmake pkgs.gcc-arm-embedded pkgs.picotool ];
+          packages = [ pkgs.cmake pkgs.gcc-arm-embedded pkgs.picotool pkgs.which ];
         };
       });
 
@@ -186,6 +186,57 @@ COPY --chmod=755 <<'EOF' /opt/lab-env/enter
 #!/bin/bash
 source /opt/lab-env/env.sh
 exec "$@"
+EOF
+
+# Smoke test in that environment: the image build fails unless the entry
+# point, lfc and the tools run, lfc can compile and run a native program, and
+# it can build an RP2040 program with the trimmed ARM compiler. The Pico SDK
+# is mounted for this step only, so it doesn't end up in the image.
+RUN --mount=type=bind,from=labenv,source=/opt/pico-sdk,target=/opt/pico-sdk,rw <<'EOF'
+#!/bin/bash
+set -e
+/opt/lab-env/enter lfc --version
+source /opt/lab-env/env.sh
+set -x
+cat /opt/lfc/LF_COMMIT
+arm-none-eabi-gcc --version
+picotool version
+cmake --version
+which cmake
+python3 --version
+mkdir -p /tmp/smoke/src
+cat > /tmp/smoke/src/Smoke.lf <<'LF'
+target C
+
+main reactor Smoke {
+  reaction(startup) {=
+    printf("Lingua Franca is ready.\n");
+  =}
+}
+LF
+cat > /tmp/smoke/src/SmokePico.lf <<'LF'
+target C {
+  platform: {
+    name: "rp2040",
+    board: "pololu_3pi_2040_robot"
+  },
+  single-threaded: true
+}
+
+main reactor {
+  reaction(startup) {=
+    printf("Hello from the RP2040.\n");
+  =}
+}
+LF
+cd /tmp/smoke
+lfc src/Smoke.lf
+./bin/Smoke
+PICO_SDK_PATH=/opt/pico-sdk lfc src/SmokePico.lf
+test -f bin/SmokePico.elf
+test -f src-gen/SmokePico/build/SmokePico.uf2
+cd /
+rm -rf /tmp/smoke
 EOF
 
 WORKDIR /work
