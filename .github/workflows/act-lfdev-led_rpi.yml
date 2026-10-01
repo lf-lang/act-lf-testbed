@@ -149,11 +149,7 @@ jobs:
           cp ${{ github.workspace }}/act-lf-testbed/test_lf_programs/*.py ${{ github.workspace }}/act-lf-testbed/lf-3pi-template
           cp ${{ github.workspace }}/act-lf-testbed/test_lf_programs/Blink* ${{ github.workspace }}/act-lf-testbed/lf-3pi-template/src/
 
-<<<<<<< HEAD
   getdockerimage:
-=======
-  get docker image:
->>>>>>> 90c1b11b8cf3740e1e14c76e30c94ed0b01c0cf9
     timeout-minutes: 60
     runs-on: [self-hosted, linux, lf-act-rpi]
     needs: filesetup
