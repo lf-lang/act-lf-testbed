@@ -1,0 +1,78 @@
+# .github/workflows/image-via-artifact.yml
+#
+# No-registry alternative: export the image as a tarball on the GitHub-hosted
+# runner, pass it along as a workflow artifact, and `docker load` it on the
+# self-hosted runner.
+#
+# Useful when the self-hosted machine can't reach a registry, or the image
+# shouldn't be published anywhere. Trade-offs: the whole image is transferred
+# on every run (a registry only sends changed layers), it counts toward your
+# artifact storage, and it's one platform per tarball.
+
+name: Image build and test
+
+on:
+  push:
+    branches: [image-test]
+  workflow_dispatch:
+
+
+# One run at a time, so two quick pushes can't both build the image.
+# A newer push replaces a run that is still waiting to start.
+concurrency:
+  group: ${{ github.workflow }}
+
+
+#Check the runner labels with `gh run view --log` or `gh run view --json jobs` and adjust below.
+
+env:
+  #IMAGE: myapp:${{ github.sha }}
+  IMAGE: act-lf:act-lf-test-docker 
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      actions: write
+    steps:
+      - uses: actions/checkout@v7
+      - uses: docker/setup-qemu-action@v4
+      - uses: docker/setup-buildx-action@v4
+
+      - name: Build and export to a tarball
+        uses: docker/build-push-action@v7
+        with:
+          context: .
+          file: ./docker/Dockerfile.act-lf-dev
+          tags: | 
+            ${{ env.IMAGE }}
+            act-lf:act-lf-test-docker
+          platforms: linux/arm64
+          outputs: type=docker,dest=${{ runner.temp }}/image.tar
+
+      - uses: actions/upload-artifact@v7
+        with:
+          name: docker-image
+          path: ${{ runner.temp }}/image.tar
+          retention-days: 1 # change to 7 if you want to keep it longer and have enough artifact storage.
+
+
+  # run:
+  #   timeout-minutes: 5
+  #   needs: build
+  #   runs-on: [self-hosted, linux] # match your runner's labels
+  #   steps:
+  #     - uses: actions/download-artifact@v8
+  #       with:
+  #         name: docker-image
+  #         path: ${{ runner.temp }}
+
+  #     - run: docker load --input "$RUNNER_TEMP/image.tar"
+
+  #     - run: docker run --rm "$IMAGE" # your command
+
+  #     # Persistent runners keep their disk between jobs; don't let images pile up.
+  #     - name: Remove image
+  #       if: always()
+  #       run: docker image rm "$IMAGE" || true

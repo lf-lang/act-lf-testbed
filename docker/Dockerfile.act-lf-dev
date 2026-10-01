@@ -1,0 +1,244 @@
+# syntax=docker/dockerfile:1
+#
+# docker/Dockerfile.act-lf-dev
+#
+
+#   docker run --rm -v "$PWD:/work" <image> lfc src/Blink.lf
+#   docker run --rm -it -v "$PWD:/work" <image>        # a shell in it
+
+# Build arguments:
+#   LF_REF, LF_REPO              Lingua Franca to build (default: master)
+#   TEMPLATE_REF, TEMPLATE_REPO  lab repository whose pinned Pico SDK the
+#                                build-time RP2040 test uses
+#                                (default: lf-lang/lf-3pi-template, main)
+
+# ---------------------------------------------------------------------------
+# Stage 1: build lfc
+# ---------------------------------------------------------------------------
+
+  FROM --platform=$BUILDPLATFORM eclipse-temurin:17-jdk-noble AS build
+
+RUN apt-get update \
+ && apt-get install -y --no-install-recommends git \
+ && rm -rf /var/lib/apt/lists/*
+
+ARG LF_REPO=https://github.com/lf-lang/lingua-franca.git
+ARG LF_REF=master
+
+WORKDIR /src/lingua-franca
+
+# Shallow clone of the requested ref, with its submodules (reactor-c etc.).
+RUN git init -q . \
+ && git remote add origin "$LF_REPO" \
+ && git fetch -q --depth 1 origin "$LF_REF" \
+ && git checkout -q --detach FETCH_HEAD \
+ && git submodule update -q --init --recursive --depth 1
+
+# The same Gradle task bin/lfc-dev runs. Result: cli/lfc/build/install/lfc/
+RUN ./gradlew --no-daemon :cli:lfc:installDist \
+ && git rev-parse HEAD > cli/lfc/build/install/lfc/LF_COMMIT
+
+# ---------------------------------------------------------------------------
+# Stage 2: build the compile environment with Nix and collect what it needs
+# ---------------------------------------------------------------------------
+FROM nixos/nix:latest AS labenv
+
+# Flakes are off by default in this image. Nix's syscall filter has to be
+# off too: it fails under QEMU, which runs this stage when an arm64 image is
+# built on an x86 runner ("unable to load seccomp BPF program").
+RUN mkdir -p /root/.config/nix \
+ && printf '%s\n' \
+      'extra-experimental-features = nix-command flakes' \
+      'filter-syscalls = false' \
+      > /root/.config/nix/nix.conf
+
+# Everything that goes into the image, from one nixpkgs release.
+COPY <<'EOF' /tmp/env/flake.nix
+{
+  # The same nixpkgs release as the lab's flake (lf-3pi-template).
+  inputs.nixpkgs.url = "nixpkgs/nixos-25.05";
+
+  outputs = { nixpkgs, ... }:
+    let
+      forEachSystem = f: nixpkgs.lib.genAttrs [ "x86_64-linux" "aarch64-linux" ]
+        (system: f nixpkgs.legacyPackages.${system});
+    in {
+      # The compilation tools from the lab's shell.nix, plus which: lfc
+      # runs `which` to find cmake and fails without it. mkShell adds the
+      # host C compiler and make, which the Pico SDK uses to build pioasm.
+      devShells = forEachSystem (pkgs: {
+        default = pkgs.mkShell {
+          packages = [ pkgs.cmake pkgs.gcc-arm-embedded pkgs.picotool pkgs.which ];
+        };
+      });
+
+      # Java to run lfc, Python for the Pico SDK's boot2 checksum script
+      # (the minimal build is enough), and basics for a system without Nix.
+      packages = forEachSystem (pkgs: {
+        jdk = pkgs.jdk17_headless;
+        python = pkgs.python3Minimal;
+        bash = pkgs.bashInteractive;
+        coreutils = pkgs.coreutils;
+        cacert = pkgs.cacert;
+      });
+    };
+}
+EOF
+
+ARG TEMPLATE_REPO=https://github.com/lf-lang/lf-3pi-template.git
+ARG TEMPLATE_REF=main
+
+# 1. Build everything in the flake. The dev shell is saved as the script
+#    `nix develop` would load; the profile keeps its packages in the store.
+# 2. Fetch the Pico SDK version the lab pins, used only by the RP2040 test at
+#    the end. It is not copied into the image.
+RUN mkdir -p /opt/lab-env \
+ && nix build --out-link /opt/jdk path:/tmp/env#jdk \
+ && nix build --out-link /opt/python path:/tmp/env#python \
+ && nix build --out-link /opt/bash path:/tmp/env#bash \
+ && nix build --out-link /opt/coreutils path:/tmp/env#coreutils \
+ && nix build --out-link /opt/cacert path:/tmp/env#cacert \
+ && nix print-dev-env --profile /opt/lab-env/profile path:/tmp/env > /opt/lab-env/env.sh \
+ && git init -q /tmp/lab \
+ && git -C /tmp/lab remote add origin "$TEMPLATE_REPO" \
+ && git -C /tmp/lab fetch -q --depth 1 origin "$TEMPLATE_REF" \
+ && git init -q /opt/pico-sdk \
+ && git -C /opt/pico-sdk remote add origin https://github.com/raspberrypi/pico-sdk.git \
+ && git -C /opt/pico-sdk fetch -q --depth 1 origin "$(git -C /tmp/lab rev-parse FETCH_HEAD:pico-sdk)" \
+ && git -C /opt/pico-sdk checkout -q --detach FETCH_HEAD \
+ && rm -rf /tmp/lab
+
+# Copy what the tools need at run time, and nothing else, into /rootfs: the
+# store paths they depend on (their "closure"), and the few files a system
+# without Nix needs (/bin/sh, /usr/bin/env, /tmp, a root user, certificates).
+RUN <<'EOF'
+#!/usr/bin/env bash
+set -eo pipefail
+mkdir -p /rootfs
+nix-store --query --requisites /opt/lab-env/profile /opt/jdk /opt/python \
+    /opt/bash /opt/coreutils /opt/cacert \
+  | cut -c2- | tar -C / -cf - -T - | tar -C /rootfs -xf -
+
+cd /rootfs
+mkdir -p opt/lab-env bin usr/bin etc/ssl/certs tmp root
+chmod 1777 tmp
+chmod 700 root
+ln -s "$(readlink -f /opt/jdk)" opt/jdk
+ln -s "$(readlink -f /opt/python)" opt/python
+ln -s "$(readlink -f /opt/bash)/bin/bash" bin/bash
+ln -s bash bin/sh
+ln -s "$(readlink -f /opt/coreutils)/bin/env" usr/bin/env
+ln -s "$(readlink -f /opt/cacert)/etc/ssl/certs/ca-bundle.crt" etc/ssl/certs/ca-bundle.crt
+printf '%s\n' 'root:x:0:0:root:/root:/bin/bash' 'nobody:x:65534:65534:nobody:/var/empty:/bin/sh' > etc/passwd
+printf '%s\n' 'root:x:0:' 'nobody:x:65534:' > etc/group
+# The saved environment points Nix's TLS libraries at a placeholder
+# (/no-cert-file.crt); point them at the real certificates instead.
+{
+  cat /opt/lab-env/env.sh
+  echo 'export SSL_CERT_FILE=/etc/ssl/certs/ca-bundle.crt'
+  echo 'export NIX_SSL_CERT_FILE=/etc/ssl/certs/ca-bundle.crt'
+} > opt/lab-env/env.sh
+EOF
+
+# Trim the copies in /rootfs:
+# - The ARM compiler has libraries for 39 ARM CPU variants. Keep the ones the
+#   RP2040 (Cortex-M0+) uses, plus the default set, and delete the rest.
+# - Its manuals, and the JDK's jmods and source archive (only jlink and IDEs
+#   use those).
+# Then list the largest remaining parts in the build log.
+RUN <<'EOF'
+#!/usr/bin/env bash
+set -eo pipefail
+. /opt/lab-env/env.sh
+gcc=$(command -v arm-none-eabi-gcc)
+tc=/rootfs$(dirname "$(dirname "$(readlink -f "$gcc")")")
+keep=$("$gcc" -mcpu=cortex-m0plus -mthumb -print-multi-directory)
+ver=$("$gcc" -dumpversion)
+chmod -R u+w "$tc"
+"$gcc" -print-multi-lib | cut -d';' -f1 | grep -vxF -e . -e "$keep" |
+while read -r variant; do
+  rm -rf "$tc/arm-none-eabi/lib/$variant" \
+         "$tc/lib/gcc/arm-none-eabi/$ver/$variant" \
+         "$tc/arm-none-eabi/include/c++/$ver/arm-none-eabi/$variant"
+done
+rm -rf "$tc/share/doc" "$tc/share/info" "$tc/share/man"
+
+jdk=/rootfs$(readlink -f /opt/jdk)
+chmod -R u+w "$jdk/lib"
+rm -rf "$jdk/lib/openjdk/jmods" "$jdk/lib/openjdk/lib/src.zip" "$jdk/lib/src.zip"
+
+echo "Largest parts of the image:"
+du -sh /rootfs/nix/store/* | sort -h | tail -n 15
+du -sh /rootfs
+EOF
+
+# ---------------------------------------------------------------------------
+# Stage 3: the image you run, with only /rootfs and lfc in it
+# ---------------------------------------------------------------------------
+FROM scratch
+
+COPY --from=labenv /rootfs/ /
+COPY --from=build /src/lingua-franca/cli/lfc/build/install/lfc /opt/lfc
+ENV PATH=/opt/lfc/bin:/opt/jdk/bin:/opt/python/bin:/usr/bin:/bin
+
+# Entry point: load the compile environment, then run the command.
+COPY --chmod=755 <<'EOF' /opt/lab-env/enter
+#!/bin/bash
+source /opt/lab-env/env.sh
+exec "$@"
+EOF
+
+# Smoke test in that environment: the image build fails unless the entry
+# point, lfc and the tools run, lfc can compile and run a native program, and
+# it can build an RP2040 program with the trimmed ARM compiler. The Pico SDK
+# is mounted for this step only, so it doesn't end up in the image.
+RUN --mount=type=bind,from=labenv,source=/opt/pico-sdk,target=/opt/pico-sdk,rw <<'EOF'
+#!/bin/bash
+set -e
+/opt/lab-env/enter lfc --version
+source /opt/lab-env/env.sh
+set -x
+cat /opt/lfc/LF_COMMIT
+arm-none-eabi-gcc --version
+picotool version
+cmake --version
+which cmake
+python3 --version
+mkdir -p /tmp/smoke/src
+cat > /tmp/smoke/src/Smoke.lf <<'LF'
+target C
+
+main reactor Smoke {
+  reaction(startup) {=
+    printf("Lingua Franca is ready.\n");
+  =}
+}
+LF
+cat > /tmp/smoke/src/SmokePico.lf <<'LF'
+target C {
+  platform: {
+    name: "rp2040",
+    board: "pololu_3pi_2040_robot"
+  },
+  single-threaded: true
+}
+
+main reactor {
+  reaction(startup) {=
+    printf("Hello from the RP2040.\n");
+  =}
+}
+LF
+cd /tmp/smoke
+lfc src/Smoke.lf
+./bin/Smoke
+PICO_SDK_PATH=/opt/pico-sdk lfc src/SmokePico.lf
+test -f bin/SmokePico.elf
+test -f src-gen/SmokePico/build/SmokePico.uf2
+cd /
+rm -rf /tmp/smoke
+EOF
+
+WORKDIR /work
+ENTRYPOINT ["/opt/lab-env/enter"]
+CMD ["bash"]
