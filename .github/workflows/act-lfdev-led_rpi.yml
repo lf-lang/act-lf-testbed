@@ -19,19 +19,19 @@ on:
         required: true
 
 jobs:
-  getapptoken:
-    timeout-minutes: 60
-    runs-on: ubuntu-latest
-    steps:
-    - name: Get a token from the GitHub App
-      id: app-token
-      uses: actions/create-github-app-token@v3
-      with:
-        client-id: ${{ inputs.act_client_id }}
-        private-key: ${{ secrets.ACT_PRIVATE_KEY }}
-        owner: lf-lang
-        repositories: act-lf-testbed
-        permission-actions: read
+  # getapptoken:
+  #   timeout-minutes: 60
+  #   runs-on: ubuntu-latest
+  #   steps:
+  #   - name: Get a token from the GitHub App
+  #     id: app-token
+  #     uses: actions/create-github-app-token@v3
+  #     with:
+  #       client-id: ${{ inputs.act_client_id }}
+  #       private-key: ${{ secrets.ACT_PRIVATE_KEY }}
+  #       owner: lf-lang
+  #       repositories: act-lf-testbed
+  #       permission-actions: read
 
   # setup:
   #   timeout-minutes: 60
@@ -173,17 +173,54 @@ jobs:
   #         cp ${{ github.workspace }}/act-lf-testbed/test_lf_programs/Blink* ${{ github.workspace }}/act-lf-testbed/lf-3pi-template/src/
 
   getdockerimage:
-    timeout-minutes: 60
+    #timeout-minutes: 60
     runs-on: [self-hosted, linux, lf-act-rpi]
     #needs: filesetup
     steps:
+      - name: Get a token from the GitHub App
+        id: app-token
+        uses: actions/create-github-app-token@v3
+        with:
+          client-id: ${{ inputs.act_client_id }}
+          private-key: ${{ secrets.act_private_key }}
+          owner: lf-lang
+          repositories: act-lf-testbed
+          permission-actions: read
+
+      # The image comes from act-lf-testbed's "Image build and test" workflow,
+      # not from this run, so look up the run that uploaded the newest copy.
+      - name: Find the newest docker-image artifact
+        id: find
+        uses: actions/github-script@v9
+        with:
+          github-token: ${{ steps.app-token.outputs.token }}
+          script: |
+            const { data } = await github.rest.actions.listArtifactsForRepo({
+              owner: 'lf-lang',
+              repo: 'act-lf-testbed',
+              name: 'docker-image',
+              per_page: 100,
+            });
+            const newest = data.artifacts
+              .filter((a) => !a.expired)
+              .sort((a, b) => b.created_at.localeCompare(a.created_at))[0];
+            if (!newest) {
+              core.setFailed('No docker-image artifact left in act-lf-testbed; run its "Image build and test" workflow first.');
+              return;
+            }
+            core.info(`Using docker-image from run ${newest.workflow_run.id}, created ${newest.created_at}`);
+            core.setOutput('run-id', newest.workflow_run.id);
+
       - name: Download docker image artifact
         uses: actions/download-artifact@v8
         with:
-          name: act-lf:act-lf-test-docker
+          name: docker-image
+          repository: lf-lang/act-lf-testbed
+          run-id: ${{ steps.find.outputs.run-id }}
+          github-token: ${{ steps.app-token.outputs.token }}
           path: ${{ runner.temp }}
       - run: docker load --input "$RUNNER_TEMP/image.tar"
-    
+  
   # compileblink1:
   #   timeout-minutes: 60
   #   runs-on: [self-hosted, linux, lf-act-rpi]
