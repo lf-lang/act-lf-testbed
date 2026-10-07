@@ -8,13 +8,15 @@ name: ACT_LFDEV_POLOLU
 
 on:
   workflow_call:
-  inputs:
-    act_client_id:
-      description: 'ACT GitHub App Client ID'
-      required: true
-    act_private_key:
-      description: 'ACT GitHub App Private Key'
-      required: true
+    inputs:
+      act_client_id:
+        description: 'ACT GitHub App Client ID'
+        type: string
+        required: true
+    secrets:
+      act_private_key:
+        description: 'ACT GitHub App Private Key'
+        required: true
 
 jobs:
   getapptoken:
