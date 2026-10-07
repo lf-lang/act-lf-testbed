@@ -194,7 +194,7 @@ jobs:
         working-directory: ${{ github.workspace }}/act-lf-testbed/lf-3pi-template
         #run: nix develop --command ${{ github.workspace }}/lingua-franca/bin/lfc-dev src/Blink_1.lf
         #run: docker run --rm "$IMAGE" lfc
-        run: docker run --rm -v "${PWD}:/work" act-lf:act-lf-test-docker lfc src/Blink.lf 
+        run: docker run --rm -v "${PWD}:/work" act-lf:act-lf-test-docker lfc src/Blink_1.lf 
   
   flashblink1:
     timeout-minutes: 60
