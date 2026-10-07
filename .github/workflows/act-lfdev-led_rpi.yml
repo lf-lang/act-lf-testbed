@@ -19,167 +19,202 @@ on:
         required: true
 
 jobs:
-  getapptoken:
-    timeout-minutes: 60
-    runs-on: ubuntu-latest
-    steps:
-    - name: Get a token from the GitHub App
-      id: app-token
-      uses: actions/create-github-app-token@v3
-      with:
-        client-id: ${{ inputs.act_client_id }}
-        private-key: ${{ secrets.ACT_PRIVATE_KEY }}
-        owner: lf-lang
-        repositories: act-lf-testbed
-        permission-actions: read
+  # getapptoken:
+  #   timeout-minutes: 60
+  #   runs-on: ubuntu-latest
+  #   steps:
+  #   - name: Get a token from the GitHub App
+  #     id: app-token
+  #     uses: actions/create-github-app-token@v3
+  #     with:
+  #       client-id: ${{ inputs.act_client_id }}
+  #       private-key: ${{ secrets.ACT_PRIVATE_KEY }}
+  #       owner: lf-lang
+  #       repositories: act-lf-testbed
+  #       permission-actions: read
 
-  setup:
-    timeout-minutes: 60
-    runs-on: [self-hosted, linux, lf-act-rpi]
-    strategy:
-      matrix:
-        python-version: ["3.10"]
-    steps:
-      - name: Checkout current repo
-        uses: actions/checkout@v5
-        with:
-          repository: lf-lang/lingua-franca
-          path: lingua-franca
-          clean: true
-          fetch-depth: 0
-          submodules: recursive
+  # setup:
+  #   timeout-minutes: 60
+  #   runs-on: [self-hosted, linux, lf-act-rpi]
+  #   strategy:
+  #     matrix:
+  #       python-version: ["3.10"]
+  #   steps:
+  #     - name: Checkout current repo
+  #       uses: actions/checkout@v5
+  #       with:
+  #         repository: lf-lang/lingua-franca
+  #         path: lingua-franca
+  #         clean: true
+  #         fetch-depth: 0
+  #         submodules: recursive
 
-      - name: Unshallow submodules (current repo)
-        working-directory: ${{ github.workspace }}/lingua-franca
-        run: |
-          git submodule foreach '
-            echo "Fixing submodule $name"
-            git fetch --unshallow || git fetch --all
-            git submodule update --init --recursive
-          '
-      # - name: Generate app token
-      #   id: app-token
-      #   uses: actions/create-github-app-token@v3
-      #   with:
-      #     app-id: ${{ secrets.APP_ID }}
-      #     private-key: ${{ secrets.APP_PRIVATE_KEY }}
-      #     repositories: act-lf-testbed
-      #     owner: lf-lang
+  #     - name: Unshallow submodules (current repo)
+  #       working-directory: ${{ github.workspace }}/lingua-franca
+  #       run: |
+  #         git submodule foreach '
+  #           echo "Fixing submodule $name"
+  #           git fetch --unshallow || git fetch --all
+  #           git submodule update --init --recursive
+  #         '
+  #     # - name: Generate app token
+  #     #   id: app-token
+  #     #   uses: actions/create-github-app-token@v3
+  #     #   with:
+  #     #     app-id: ${{ secrets.APP_ID }}
+  #     #     private-key: ${{ secrets.APP_PRIVATE_KEY }}
+  #     #     repositories: act-lf-testbed
+  #     #     owner: lf-lang
 
-      # - name: Debug token
-      #   run: |
-      #     echo "Token length: ${#TOKEN}"
-      #     echo "Token is empty: $([[ -z "$TOKEN" ]] && echo yes || echo no)"
-      #   env:
-      #     TOKEN: ${{ steps.app-token.outputs.token }}
+  #     # - name: Debug token
+  #     #   run: |
+  #     #     echo "Token length: ${#TOKEN}"
+  #     #     echo "Token is empty: $([[ -z "$TOKEN" ]] && echo yes || echo no)"
+  #     #   env:
+  #     #     TOKEN: ${{ steps.app-token.outputs.token }}
 
-      - name: Checkout ACT repo
-        uses: actions/checkout@v5
-        with:
-          repository: lf-lang/act-lf-testbed
-          path: act-lf-testbed
-          #token: ${{ steps.app-token.outputs.token }}
-          clean: true
-          fetch-depth: 0
-          submodules: recursive
+  #     - name: Checkout ACT repo
+  #       uses: actions/checkout@v5
+  #       with:
+  #         repository: lf-lang/act-lf-testbed
+  #         path: act-lf-testbed
+  #         #token: ${{ steps.app-token.outputs.token }}
+  #         clean: true
+  #         fetch-depth: 0
+  #         submodules: recursive
 
-      - name: Unshallow submodules (ACT repo)
-        working-directory: ${{ github.workspace }}/act-lf-testbed
-        run: |
-          git submodule foreach '
-            echo "Fixing submodule $name"
-            git fetch --unshallow || git fetch --all
-          '
+  #     - name: Unshallow submodules (ACT repo)
+  #       working-directory: ${{ github.workspace }}/act-lf-testbed
+  #       run: |
+  #         git submodule foreach '
+  #           echo "Fixing submodule $name"
+  #           git fetch --unshallow || git fetch --all
+  #         '
 
-      - name: Nix Setup
-        id: nix
-        working-directory: ${{ github.workspace }}/act-lf-testbed/lf-3pi-template
-        run: nix develop --command true
+  #     - name: Nix Setup
+  #       id: nix
+  #       working-directory: ${{ github.workspace }}/act-lf-testbed/lf-3pi-template
+  #       run: nix develop --command true
 
-      - name: Debug git state
-        if: steps.nix.outcome == 'failure'
-        working-directory: ${{ github.workspace }}/act-lf-testbed/lf-3pi-template
-        run: |
-          git rev-parse --is-shallow-repository
-          git rev-list --count HEAD
+  #     - name: Debug git state
+  #       if: steps.nix.outcome == 'failure'
+  #       working-directory: ${{ github.workspace }}/act-lf-testbed/lf-3pi-template
+  #       run: |
+  #         git rev-parse --is-shallow-repository
+  #         git rev-list --count HEAD
 
-  pythonpackages:
-    timeout-minutes: 60
-    runs-on: [self-hosted, linux, lf-act-rpi]
-    needs: setup
-    strategy:
-      matrix:
-        python-version: ["3.12"]
-    steps:
-      - name: Set up Python ${{ matrix.python-version }}
-        uses: actions/setup-python@v5
-        with:
-           python-version: ${{ matrix.python-version }}
+  # pythonpackages:
+  #   timeout-minutes: 60
+  #   runs-on: [self-hosted, linux, lf-act-rpi]
+  #   needs: setup
+  #   strategy:
+  #     matrix:
+  #       python-version: ["3.12"]
+  #   steps:
+  #     - name: Set up Python ${{ matrix.python-version }}
+  #       uses: actions/setup-python@v5
+  #       with:
+  #          python-version: ${{ matrix.python-version }}
 
-      - name: Install dependencies
-        run: |
-          /home/act-runner/camenv/bin/python -c "import libcamera, pykms, picamera2, cv2; print('env OK')"
-      # - name: Install dependencies
-      #   run: |
-      #     unset LD_LIBRARY_PATH
-      #     /usr/bin/python3 -m venv --system-site-packages .venv
-      #     SITEDIR=$(.venv/bin/python -c "import sysconfig; print(sysconfig.get_paths()['purelib'])")
-      #     printf '%s\n%s\n' \
-      #       "/usr/local/lib/python3/dist-packages" \
-      #       "/usr/local/lib/aarch64-linux-gnu/python3.12/site-packages" \
-      #       > "$SITEDIR/local_camera.pth"
-      #     .venv/bin/python -m pip install --upgrade pip
-      #     .venv/bin/pip install opencv-python numpy pandas matplotlib picamera2
-      #     .venv/bin/python -c "import libcamera, pykms, picamera2; print('OK')"
-      #     .venv/bin/python -c "import sys; print(sys.version)"
-      #     .venv/bin/python -c "import cv2; print(cv2.__version__)"
-      #     .venv/bin/python -c "import numpy; print(numpy.__version__)"
-      #     .venv/bin/python -c "import pandas; print(pandas.__version__)"
-      #     .venv/bin/python -c "import matplotlib; print(matplotlib.__version__)"
-      #     echo ${{ github.workspace }}
-      #     ls
+  #     - name: Install dependencies
+  #       run: |
+  #         /home/act-runner/camenv/bin/python -c "import libcamera, pykms, picamera2, cv2; print('env OK')"
+  #     # - name: Install dependencies
+  #     #   run: |
+  #     #     unset LD_LIBRARY_PATH
+  #     #     /usr/bin/python3 -m venv --system-site-packages .venv
+  #     #     SITEDIR=$(.venv/bin/python -c "import sysconfig; print(sysconfig.get_paths()['purelib'])")
+  #     #     printf '%s\n%s\n' \
+  #     #       "/usr/local/lib/python3/dist-packages" \
+  #     #       "/usr/local/lib/aarch64-linux-gnu/python3.12/site-packages" \
+  #     #       > "$SITEDIR/local_camera.pth"
+  #     #     .venv/bin/python -m pip install --upgrade pip
+  #     #     .venv/bin/pip install opencv-python numpy pandas matplotlib picamera2
+  #     #     .venv/bin/python -c "import libcamera, pykms, picamera2; print('OK')"
+  #     #     .venv/bin/python -c "import sys; print(sys.version)"
+  #     #     .venv/bin/python -c "import cv2; print(cv2.__version__)"
+  #     #     .venv/bin/python -c "import numpy; print(numpy.__version__)"
+  #     #     .venv/bin/python -c "import pandas; print(pandas.__version__)"
+  #     #     .venv/bin/python -c "import matplotlib; print(matplotlib.__version__)"
+  #     #     echo ${{ github.workspace }}
+  #     #     ls
 
-  filecleanup:
-    timeout-minutes: 60
-    runs-on: [self-hosted, linux, lf-act-rpi]
-    needs: pythonpackages
-    steps:
-      #- uses: actions/checkout@v5
-      - name: Path Setup
-        run: |
-          ls ${{ github.workspace }}/act-lf-testbed 
-          ls ${{ github.workspace }}/act-lf-testbed/test_lf_programs/*.sh
-          ls ${{ github.workspace }}/act-lf-testbed/lf-3pi-template/
-      - name: Copy Script
-        working-directory: ${{ github.workspace }}/act-lf-testbed
-        run: cp ${{ github.workspace }}/act-lf-testbed/test_lf_programs/*.sh ${{ github.workspace }}/act-lf-testbed/lf-3pi-template/
-      - name: Run Script
-        working-directory: ${{ github.workspace }}/act-lf-testbed/lf-3pi-template/
-        run: |
-          chmod +x cleanup.sh
-          ./cleanup.sh
+  # filecleanup:
+  #   timeout-minutes: 60
+  #   runs-on: [self-hosted, linux, lf-act-rpi]
+  #   needs: pythonpackages
+  #   steps:
+  #     #- uses: actions/checkout@v5
+  #     - name: Path Setup
+  #       run: |
+  #         ls ${{ github.workspace }}/act-lf-testbed 
+  #         ls ${{ github.workspace }}/act-lf-testbed/test_lf_programs/*.sh
+  #         ls ${{ github.workspace }}/act-lf-testbed/lf-3pi-template/
+  #     - name: Copy Script
+  #       working-directory: ${{ github.workspace }}/act-lf-testbed
+  #       run: cp ${{ github.workspace }}/act-lf-testbed/test_lf_programs/*.sh ${{ github.workspace }}/act-lf-testbed/lf-3pi-template/
+  #     - name: Run Script
+  #       working-directory: ${{ github.workspace }}/act-lf-testbed/lf-3pi-template/
+  #       run: |
+  #         chmod +x cleanup.sh
+  #         ./cleanup.sh
 
-  filesetup:
-    timeout-minutes: 60
-    #if: github.event.workflow_run.conclusion == 'success'
-    runs-on: [self-hosted, linux, lf-act-rpi]
-    needs: filecleanup
-    steps:
-      - name: Copy Files
-        working-directory: ${{ github.workspace }}
-        run: |
-          #ls && ls src/
-          cp ${{ github.workspace }}/act-lf-testbed/test_lf_programs/*.py ${{ github.workspace }}/act-lf-testbed/lf-3pi-template
-          cp ${{ github.workspace }}/act-lf-testbed/test_lf_programs/Blink* ${{ github.workspace }}/act-lf-testbed/lf-3pi-template/src/
+  # filesetup:
+  #   timeout-minutes: 60
+  #   #if: github.event.workflow_run.conclusion == 'success'
+  #   runs-on: [self-hosted, linux, lf-act-rpi]
+  #   needs: filecleanup
+  #   steps:
+  #     - name: Copy Files
+  #       working-directory: ${{ github.workspace }}
+  #       run: |
+  #         #ls && ls src/
+  #         cp ${{ github.workspace }}/act-lf-testbed/test_lf_programs/*.py ${{ github.workspace }}/act-lf-testbed/lf-3pi-template
+  #         cp ${{ github.workspace }}/act-lf-testbed/test_lf_programs/Blink* ${{ github.workspace }}/act-lf-testbed/lf-3pi-template/src/
 
   getdockerimage:
-    timeout-minutes: 60
+    #timeout-minutes: 60
     runs-on: [self-hosted, linux, lf-act-rpi]
-    needs: filesetup
+    #needs: filesetup
     steps:
+      - name: Get a token from the GitHub App
+        id: app-token
+        uses: actions/create-github-app-token@v3
+        with:
+          client-id: ${{ inputs.act_client_id }}
+          private-key: ${{ secrets.act_private_key }}
+          owner: lf-lang
+          repositories: act-lf-testbed
+          permission-actions: read
+
+      # The image comes from act-lf-testbed's "Image build and test" workflow,
+      # not from this run, so look up the run that uploaded the newest copy.
+      - name: Find the newest docker-image artifact
+        id: find
+        uses: actions/github-script@v9
+        with:
+          github-token: ${{ steps.app-token.outputs.token }}
+          script: |
+            const { data } = await github.rest.actions.listArtifactsForRepo({
+              owner: 'lf-lang',
+              repo: 'act-lf-testbed',
+              name: 'docker-image',
+              per_page: 100,
+            });
+            const newest = data.artifacts
+              .filter((a) => !a.expired)
+              .sort((a, b) => b.created_at.localeCompare(a.created_at))[0];
+            if (!newest) {
+              core.setFailed('No docker-image artifact left in act-lf-testbed; run its "Image build and test" workflow first.');
+              return;
+            }
+            core.info(`Using docker-image from run ${newest.workflow_run.id}, created ${newest.created_at}`);
+            core.setOutput('run-id', newest.workflow_run.id);
+
       - name: Download docker image artifact
         uses: actions/download-artifact@v8
         with:
+<<<<<<< HEAD
           name: act-lf:act-lf-test-docker
           path: ${{ runner.temp }}
       - run: docker load --input "$RUNNER_TEMP/image.tar"
@@ -194,15 +229,34 @@ jobs:
         #run: nix develop --command ${{ github.workspace }}/lingua-franca/bin/lfc-dev src/Blink_1.lf
         #run: docker run --rm "$IMAGE" lfc
         run: docker run --rm -v "${PWD}:/work" act-lf:act-lf-test-docker lfc src/Blink_1.lf 
+=======
+          name: docker-image
+          repository: lf-lang/act-lf-testbed
+          run-id: ${{ steps.find.outputs.run-id }}
+          github-token: ${{ steps.app-token.outputs.token }}
+          path: ${{ runner.temp }}
+      - run: docker load --input "$RUNNER_TEMP/image.tar"
+>>>>>>> 92043d45a6290c4eb02d49e66955922b929f8de0
   
-  flashblink1:
-    timeout-minutes: 60
-    runs-on: [self-hosted, linux, lf-act-rpi]
-    needs: [compileblink1]
-    steps:
-    - name: Flashing Blink
-      working-directory: ${{ github.workspace }}/act-lf-testbed/lf-3pi-template
-      run: nix develop --command picotool load -x bin/Blink_1.elf -f
+  # compileblink1:
+  #   timeout-minutes: 60
+  #   runs-on: [self-hosted, linux, lf-act-rpi]
+  #   needs: [getdockerimage]
+  #   steps:
+  #     - name: Compile Blink - 1
+  #       working-directory: ${{ github.workspace }}/act-lf-testbed/lf-3pi-template
+  #       #run: nix develop --command ${{ github.workspace }}/lingua-franca/bin/lfc-dev src/Blink_1.lf
+  #       #run: docker run --rm "$IMAGE" lfc
+  #       run: docker run --rm -v "${PWD}:/work" act-lf:act-lf-test-docker lfc src/Blink_1.lf 
+  
+  # flashblink1:
+  #   timeout-minutes: 60
+  #   runs-on: [self-hosted, linux, lf-act-rpi]
+  #   needs: [compileblink1]
+  #   steps:
+  #   - name: Flashing Blink
+  #     working-directory: ${{ github.workspace }}/act-lf-testbed/lf-3pi-template
+  #     run: nix develop --command picotool load -x bin/Blink_1.elf -f
   
 #   runblink1:
 #     timeout-minutes: 60
