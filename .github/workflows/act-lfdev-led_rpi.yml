@@ -26,7 +26,7 @@ jobs:
       uses: actions/create-github-app-token@v3
       with:
         client-id: ${{ inputs.act_client_id }}
-        private-key: ${{ inputs.act_private_key }}
+        private-key: ${{ secrets.ACT_PRIVATE_KEY }}
         owner: lf-lang
         repositories: act-lf-testbed
         permission-actions: read
