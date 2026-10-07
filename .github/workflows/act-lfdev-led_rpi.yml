@@ -182,7 +182,6 @@ jobs:
         with:
           name: act-lf:act-lf-test-docker
           path: ${{ runner.temp }}
-
       - run: docker load --input "$RUNNER_TEMP/image.tar"
     
   compileblink1:
