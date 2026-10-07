@@ -55,4 +55,4 @@ jobs:
         with:
           name: docker-image
           path: ${{ runner.temp }}/image.tar
-          retention-days: 1 # change to 7 if you want to keep it longer and have enough artifact storage.
+          retention-days: 2 # change to 7 if you want to keep it longer and have enough artifact storage.
