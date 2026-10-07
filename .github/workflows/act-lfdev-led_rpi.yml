@@ -180,15 +180,14 @@ jobs:
       - name: Download docker image artifact
         uses: actions/download-artifact@v8
         with:
-          name: docker-image
+          name: act-lf:act-lf-test-docker
           path: ${{ runner.temp }}
-
       - run: docker load --input "$RUNNER_TEMP/image.tar"
     
   compileblink1:
     timeout-minutes: 60
     runs-on: [self-hosted, linux, lf-act-rpi]
-    needs: [filesetup]
+    needs: [getdockerimage]
     steps:
       - name: Compile Blink - 1
         working-directory: ${{ github.workspace }}/act-lf-testbed/lf-3pi-template
