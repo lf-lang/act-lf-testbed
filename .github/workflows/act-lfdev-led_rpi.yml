@@ -8,8 +8,29 @@ name: ACT_LFDEV_POLOLU
 
 on:
   workflow_call:
+  inputs:
+    act_client_id:
+      description: 'ACT GitHub App Client ID'
+      required: true
+    act_private_key:
+      description: 'ACT GitHub App Private Key'
+      required: true
 
 jobs:
+  getapptoken:
+    timeout-minutes: 60
+    runs-on: ubuntu-latest
+    steps:
+    - name: Get a token from the GitHub App
+      id: app-token
+      uses: actions/create-github-app-token@v3
+      with:
+        client-id: ${{ inputs.act_client_id }}
+        private-key: ${{ inputs.act_private_key }}
+        owner: lf-lang
+        repositories: act-lf-testbed
+        permission-actions: read
+
   setup:
     timeout-minutes: 60
     runs-on: [self-hosted, linux, lf-act-rpi]
