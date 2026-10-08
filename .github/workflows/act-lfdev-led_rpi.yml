@@ -19,8 +19,18 @@ on:
         required: true
 
 jobs:
+  gate:
+    if: >-
+      github.event_name == 'pull_request' && contains(github.event.pull_request.labels.*.name, 'act-lf-led')
+    runs-on: ubuntu-latest
+    steps:
+      - run: |
+          echo "Pull request #${{ github.event.pull_request.number }} may use the Pi."
+ 
   setup:
     timeout-minutes: 60
+    needs: gate
+    #if: github.event.workflow_run.conclusion == 'success'
     runs-on: [self-hosted, linux, lf-act-rpi]
     strategy:
       matrix:
@@ -43,21 +53,6 @@ jobs:
             git fetch --unshallow || git fetch --all
             git submodule update --init --recursive
           '
-      # - name: Generate app token
-      #   id: app-token
-      #   uses: actions/create-github-app-token@v3
-      #   with:
-      #     app-id: ${{ secrets.APP_ID }}
-      #     private-key: ${{ secrets.APP_PRIVATE_KEY }}
-      #     repositories: act-lf-testbed
-      #     owner: lf-lang
-
-      # - name: Debug token
-      #   run: |
-      #     echo "Token length: ${#TOKEN}"
-      #     echo "Token is empty: $([[ -z "$TOKEN" ]] && echo yes || echo no)"
-      #   env:
-      #     TOKEN: ${{ steps.app-token.outputs.token }}
 
       - name: Checkout ACT repo
         uses: actions/checkout@v5
