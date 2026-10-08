@@ -13,6 +13,11 @@ name: Image build and test
 
 on:
   workflow_call:
+  # Rebuild every day so a fresh docker-image artifact is always available.
+  schedule:
+    - cron: '0 6 * * *' # 06:00 UTC
+  # Run it by hand if the artifact is missing or a rebuild is needed now.
+  workflow_dispatch:
 
 # One run at a time, so two quick pushes can't both build the image.
 # A newer push replaces a run that is still waiting to start.
@@ -52,4 +57,4 @@ jobs:
         with:
           name: docker-image
           path: ${{ runner.temp }}/image.tar
-          retention-days: 2 # change to 7 if you want to keep it longer and have enough artifact storage.
+          retention-days: 1 # rebuilt daily by the schedule above, so one day is enough.
