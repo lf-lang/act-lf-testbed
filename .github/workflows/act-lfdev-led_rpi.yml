@@ -161,7 +161,7 @@ jobs:
   getdockerimage:
     #timeout-minutes: 60
     runs-on: [self-hosted, linux, lf-act-rpi]
-    #needs: filesetup
+    needs: filesetup
     steps:
       - name: Get a token from the GitHub App
         id: app-token
@@ -275,3 +275,21 @@ jobs:
 #           path: |
 #             ${{ github.workspace }}/act-lf-testbed/lf-3pi-template/time_vs_deviation_percent.svg
 #             ${{ github.workspace }}/act-lf-testbed/lf-3pi-template/blink_results.csv
+
+  removeimage:
+    # Waits for every other job, then runs whatever happened to them:
+    # succeeded, failed, skipped or cancelled.
+    if: always()
+    #Add other jobs to the needs list if they are added to this workflow.
+    needs: [getdockerimage, flashblink1]
+    timeout-minutes: 10
+    runs-on: [self-hosted, linux, lf-act-rpi]
+    steps:
+      - name: Remove the Docker image
+        run: |
+          # Nothing to remove if an earlier job failed before loading it.
+          if docker image inspect act-lf:act-lf-test-docker > /dev/null 2>&1; then
+            docker image rm act-lf:act-lf-test-docker || true
+          fi
+          # Also remove older versions left without a name.
+          docker image prune -f || true
