@@ -214,29 +214,12 @@ jobs:
       - name: Download docker image artifact
         uses: actions/download-artifact@v8
         with:
-<<<<<<< HEAD
-          name: act-lf:act-lf-test-docker
-          path: ${{ runner.temp }}
-      - run: docker load --input "$RUNNER_TEMP/image.tar"
-    
-  compileblink1:
-    timeout-minutes: 60
-    runs-on: [self-hosted, linux, lf-act-rpi]
-    needs: [getdockerimage]
-    steps:
-      - name: Compile Blink - 1
-        working-directory: ${{ github.workspace }}/act-lf-testbed/lf-3pi-template
-        #run: nix develop --command ${{ github.workspace }}/lingua-franca/bin/lfc-dev src/Blink_1.lf
-        #run: docker run --rm "$IMAGE" lfc
-        run: docker run --rm -v "${PWD}:/work" act-lf:act-lf-test-docker lfc src/Blink_1.lf 
-=======
           name: docker-image
           repository: lf-lang/act-lf-testbed
           run-id: ${{ steps.find.outputs.run-id }}
           github-token: ${{ steps.app-token.outputs.token }}
           path: ${{ runner.temp }}
       - run: docker load --input "$RUNNER_TEMP/image.tar"
->>>>>>> 92043d45a6290c4eb02d49e66955922b929f8de0
   
   # compileblink1:
   #   timeout-minutes: 60
