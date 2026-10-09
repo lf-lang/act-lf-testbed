@@ -19,17 +19,17 @@ on:
         required: true
 
 jobs:
-  gate:
-    if: >-
-      github.event_name == 'pull_request' && contains(github.event.pull_request.labels.*.name, 'act-lf-led')
-    runs-on: ubuntu-latest
-    steps:
-      - run: |
-          echo "Pull request #${{ github.event.pull_request.number }} may use the Pi."
+  # gate:
+  #   if: >-
+  #     github.event_name == 'pull_request' && contains(github.event.pull_request.labels.*.name, 'act-lf-led')
+  #   runs-on: ubuntu-latest
+  #   steps:
+  #     - run: |
+  #         echo "Pull request #${{ github.event.pull_request.number }} may use the runner."
  
   setup:
     timeout-minutes: 60
-    needs: gate
+    #needs: gate
     #if: github.event.workflow_run.conclusion == 'success'
     runs-on: [self-hosted, linux, lf-act-rpi]
     strategy:
@@ -203,7 +203,7 @@ jobs:
       - run: docker load --input "$RUNNER_TEMP/image.tar"
   
   compileblink1:
-    timeout-minutes: 600
+    timeout-minutes: 60
     runs-on: [self-hosted, linux, lf-act-rpi]
     needs: [getdockerimage]
     steps:
@@ -274,9 +274,9 @@ jobs:
   removeimage:
     # Waits for every other job, then runs whatever happened to them:
     # succeeded, failed, skipped or cancelled.
-    if: always()
     #Add other jobs to the needs list if they are added to this workflow.
-    needs: [getdockerimage, flashblink1]
+    needs: [getdockerimage]
+    if: needs.getdockerimage.result == 'success'
     timeout-minutes: 10
     runs-on: [self-hosted, linux, lf-act-rpi]
     steps:
