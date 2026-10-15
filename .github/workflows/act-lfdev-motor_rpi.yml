@@ -205,7 +205,7 @@ jobs:
           path: ${{ runner.temp }}
       - run: docker load --input "$RUNNER_TEMP/image.tar"
   
-  compileblink1:
+  compilemotor1:
     timeout-minutes: 60
     runs-on: [self-hosted, linux, lf-act-rpi]
     needs: [getdockerimage]
@@ -214,35 +214,34 @@ jobs:
         working-directory: ${{ github.workspace }}/act-lf-testbed/lf-3pi-template
         #run: nix develop --command ${{ github.workspace }}/lingua-franca/bin/lfc-dev src/Blink_1.lf
         #run: docker run --rm "$IMAGE" lfc
-        run: docker run --rm -v "${PWD}:/work" act-lf:act-lf-test-docker lfc src/Blink_1.lf 
+        run: docker run --rm -v "${PWD}:/work" act-lf:act-lf-test-docker lfc src/Motor_1.lf 
   
-  flashblink1:
+  flashmotor1:
     timeout-minutes: 60
     runs-on: [self-hosted, linux, lf-act-rpi]
-    needs: [compileblink1]
+    needs: [compilemotor1]
     steps:
-    - name: Flashing Blink
+    - name: Flashing Motor
       working-directory: ${{ github.workspace }}/act-lf-testbed/lf-3pi-template
-      run: nix develop --command picotool load -x bin/Blink_1.elf -f
+      run: nix develop --command picotool load -x bin/Motor_1.elf -f
   
-#   runblink1:
-#     timeout-minutes: 60
-#     runs-on: [self-hosted, linux, lf-act-rpi]
-#     needs: [flashblink1]
-#     steps:
-#       - name: Run Test
-#         id: test1
-#         working-directory: ${{ github.workspace }}/act-lf-testbed/lf-3pi-template
-#         run: |
-#           PERIOD=$(/home/act-runner/camenv/bin/python3 test_led_module_rpi.py 1)
-#           echo "Detected Period: $PERIOD"
+  # runmotor1:
+  #   runs-on: [self-hosted, linux, lf-act-ast]
+  #   needs: [flashmotor1]
+  #   steps:
+  #     - name: Run Test for Motor_1
+  #       id: test1
+  #       working-directory: ${{ github.workspace }}/lf-3pi-template
+  #       run: |
+  #         RPM=$(python3 test_motor_module.py 1)
+  #         echo "Detected RPM: $RPM"
 
-# # if awk "BEGIN {exit !($PERIOD >= 0.19 && $PERIOD <= 0.21)}"; then
-# #   echo "PASS"
-# # else
-# #   echo "FAIL"
-# #   exit 1
-# # fi
+  #         if awk "BEGIN {exit !($RPM >= 30 && $RPM <= 36)}"; then
+  #           echo "PASS"
+  #         else
+  #           echo "FAIL"
+  #           exit 1
+  #         fi
 
 #   plotgraph:
 #     timeout-minutes: 60

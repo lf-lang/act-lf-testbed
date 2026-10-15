@@ -1,10 +1,4 @@
-name: ACT_LFDEV_POLOLU 
-
-#on:
-#  workflow_run:
-#    workflows: ["ACT_LED_LF_POLOLU"]
-#    types:
-#      - completed
+name: ACT_LFDEV_LED_POLOLU 
 
 on:
   workflow_call:
@@ -18,12 +12,10 @@ on:
         description: 'ACT GitHub App Private Key'
         required: true
 
-#github.event_name == 'pull_request' &&
-
 jobs:
   # gate:
   #   if: >-
-  #     contains(github.event.pull_request.labels.*.name, 'act-lf-led')
+  #     github.event_name == 'pull_request' && contains(github.event.pull_request.labels.*.name, 'act-lf-led')
   #   runs-on: ubuntu-latest
   #   steps:
   #     - run: |
@@ -31,7 +23,7 @@ jobs:
 
   setup:
     timeout-minutes: 60
-    #needs: gate
+    # needs: gate
     #if: github.event.workflow_run.conclusion == 'success'
     runs-on: [self-hosted, linux, lf-act-rpi]
     strategy:
