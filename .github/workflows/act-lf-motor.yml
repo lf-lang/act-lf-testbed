@@ -8,15 +8,6 @@ name: ACT_MOTOR_LF_POLOLU
 
 on:
   workflow_call:
-    inputs:
-      act_client_id:
-        description: 'ACT GitHub App Client ID'
-        type: string
-        required: true
-    secrets:
-      act_private_key:
-        description: 'ACT GitHub App Private Key'
-        required: true
 
 jobs:
   setup:
