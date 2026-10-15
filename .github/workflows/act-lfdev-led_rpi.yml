@@ -31,7 +31,7 @@ jobs:
 
   setup:
     timeout-minutes: 60
-    needs: gate
+    #needs: gate
     #if: github.event.workflow_run.conclusion == 'success'
     runs-on: [self-hosted, linux, lf-act-rpi]
     strategy:
