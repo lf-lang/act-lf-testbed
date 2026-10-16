@@ -14,12 +14,13 @@ on:
 
 jobs:
   gate:
-    if: >-
-      github.event_name == 'pull_request' && contains(github.event.pull_request.labels.*.name, 'act-lf-led')
+    # if: >-
+    #   github.event_name == 'pull_request' && contains(github.event.pull_request.labels.*.name, 'act-lf-led')
     runs-on: ubuntu-latest
     steps:
       - run: |
-          echo "Pull request #${{ github.event.pull_request.number }} may use the runner."
+          echo "Running"        
+#  echo "Pull request #${{ github.event.pull_request.number }} may use the runner."
 
   setup:
     timeout-minutes: 60
