@@ -13,17 +13,17 @@ on:
         required: true
 
 jobs:
-  # gate:
-  #   if: >-
-  #     github.event_name == 'pull_request' && contains(github.event.pull_request.labels.*.name, 'act-lf-led')
-  #   runs-on: ubuntu-latest
-  #   steps:
-  #     - run: |
-  #         echo "Pull request #${{ github.event.pull_request.number }} may use the runner."
+  gate:
+    if: >-
+      github.event_name == 'pull_request' && contains(github.event.pull_request.labels.*.name, 'act-lf-led')
+    runs-on: ubuntu-latest
+    steps:
+      - run: |
+          echo "Pull request #${{ github.event.pull_request.number }} may use the runner."
 
   setup:
     timeout-minutes: 60
-    # needs: gate
+    needs: gate
     #if: github.event.workflow_run.conclusion == 'success'
     runs-on: [self-hosted, linux, lf-act-rpi]
     strategy:
