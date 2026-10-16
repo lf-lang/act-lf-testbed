@@ -275,7 +275,7 @@ jobs:
     # Waits for every other job, then runs whatever happened to them:
     # succeeded, failed, skipped or cancelled.
     #Add other jobs to the needs list if they are added to this workflow.
-    needs: [getdockerimage, flashblink1]
+    needs: [getdockerimage, flashmotor1]
     if: needs.getdockerimage.result == 'success'
     timeout-minutes: 10
     runs-on: [self-hosted, linux, lf-act-rpi]
@@ -288,3 +288,16 @@ jobs:
           fi
           # Also remove older versions left without a name.
           docker image prune -f || true
+
+  removeworkdir:
+    # Waits for every other job, then runs whatever happened to them:
+    # succeeded, failed, skipped or cancelled.
+    #Add other jobs to the needs list if they are added to this workflow.
+    needs: [setup, flashmotor1]
+    if: needs.setup.result == 'success'
+    timeout-minutes: 10
+    runs-on: [self-hosted, linux, lf-act-rpi]
+    steps:
+      - name: Remove the working directory
+        run: |
+          rm -rf ${{ github.workspace }}/*
