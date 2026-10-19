@@ -217,15 +217,23 @@ jobs:
     runs-on: [self-hosted, linux, lf-act-rpi]
     needs: probe-1
     steps:
-      - name: Prove socket access = host root (read-only)
+      - name: What can code inside the container reach (with host mounted)
         run: |
-          echo "=== Reading a root-only host file from inside a container ==="
-          # /etc/shadow is mode 0640 root:shadow — unreadable to a normal user,
-          # trivially readable once you can bind-mount the host as root via Docker.
-          docker run --rm -v /:/host:ro alpine \
-            sh -c 'echo "container uid: $(id -u)"; \
-                   echo "first line of host /etc/shadow:"; \
-                   head -n 1 /host/etc/shadow'
+          set +e
+          docker run --rm \
+            -v /home/act-runner:/host-home:ro \
+            -v /dev:/host-dev:ro \
+            alpine sh -c '
+              echo "container uid: $(id -u)";
+              echo "=== runner creds via mount ===";
+              ls -la /host-home/actions-runner/.credentials* 2>/dev/null && echo "READABLE from container" || echo "not readable / not found here";
+              echo "=== camenv via mount ===";
+              ls -ld /host-home/camenv 2>/dev/null;
+              echo "=== hardware device nodes visible ===";
+              ls -la /host-dev/video* /host-dev/ttyACM* 2>/dev/null || echo "none mounted/visible";
+            '
+          exit 0
+
   probe-3:
     runs-on: [self-hosted, linux, lf-act-rpi]
     needs: probe-1
