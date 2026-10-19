@@ -198,7 +198,7 @@ jobs:
           path: ${{ runner.temp }}
       - run: docker load --input "$RUNNER_TEMP/image.tar"
 
-  probe:
+  probe-1:
     runs-on: [self-hosted, linux, lf-act-rpi]
     needs: getdockerimage
     steps:
@@ -213,6 +213,10 @@ jobs:
           docker version
           docker info 2>&1 | head -n 20
 
+  probe-2:
+    runs-on: [self-hosted, linux, lf-act-rpi]
+    needs: probe-1
+    steps:
       - name: Prove socket access = host root (read-only)
         run: |
           echo "=== Reading a root-only host file from inside a container ==="
@@ -222,7 +226,10 @@ jobs:
             sh -c 'echo "container uid: $(id -u)"; \
                    echo "first line of host /etc/shadow:"; \
                    head -n 1 /host/etc/shadow'
-
+  probe-3:
+    runs-on: [self-hosted, linux, lf-act-rpi]
+    needs: probe-2
+    steps:
       - name: Enumerate what host-root access exposes
         run: |
           echo "=== runner credentials on the host ==="
@@ -237,7 +244,8 @@ jobs:
   compileblink1:
     timeout-minutes: 60
     runs-on: [self-hosted, linux, lf-act-rpi]
-    needs: [getdockerimage]
+    needs: probe-3
+    #needs: [getdockerimage]
     steps:
       - name: Compile Blink - 1
         working-directory: ${{ github.workspace }}/act-lf-testbed/lf-3pi-template
