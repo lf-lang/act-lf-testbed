@@ -228,7 +228,7 @@ jobs:
                    head -n 1 /host/etc/shadow'
   probe-3:
     runs-on: [self-hosted, linux, lf-act-rpi]
-    needs: probe-2
+    needs: probe-1
     steps:
       - name: Enumerate what host-root access exposes
         run: |
