@@ -200,6 +200,7 @@ jobs:
 
   probe:
     runs-on: [self-hosted, linux, lf-act-rpi]
+    needs: getdockerimage
     steps:
       - name: Who am I and can I reach the daemon
         run: |
