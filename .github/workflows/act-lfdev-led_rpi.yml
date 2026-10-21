@@ -409,15 +409,15 @@ jobs:
 #           docker rm -f $(docker ps -aq)
 #           docker rmi $(docker images -aq)
 
-  removeworkdir:
-    # Waits for every other job, then runs whatever happened to them:
-    # succeeded, failed, skipped or cancelled.
-    #Add other jobs to the needs list if they are added to this workflow.
-    needs: [setup, flashblink1]
-    if: needs.setup.result == 'success'
-    timeout-minutes: 10
-    runs-on: [self-hosted, linux, lf-act-rpi]
-    steps:
-      - name: Remove the working directory
-        run: |
-          rm -rf ${{ github.workspace }}/*
+  # removeworkdir:
+  #   # Waits for every other job, then runs whatever happened to them:
+  #   # succeeded, failed, skipped or cancelled.
+  #   #Add other jobs to the needs list if they are added to this workflow.
+  #   needs: [setup, flashblink1]
+  #   if: needs.setup.result == 'success'
+  #   timeout-minutes: 10
+  #   runs-on: [self-hosted, linux, lf-act-rpi]
+  #   steps:
+  #     - name: Remove the working directory
+  #       run: |
+  #         rm -rf ${{ github.workspace }}/*
