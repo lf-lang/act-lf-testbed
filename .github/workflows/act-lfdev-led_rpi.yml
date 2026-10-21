@@ -16,12 +16,19 @@ jobs:
   gate:
     if: >-
        github.event_name == 'pull_request' 
-  # && contains(github.event.pull_request.labels.*.name, 'act-lf-led')
+# && contains(github.event.pull_request.labels.*.name, 'act-lf-led')
     runs-on: ubuntu-latest
     steps:
       - run: |
           echo "Pull request #${{ github.event.pull_request.number }} may use the runner."
 
+  string-test:
+    runs-on: [self-hosted, linux, lf-act-rpi]
+    steps:
+      - name: Unsafe interpolation
+        run: |
+          echo "Testing injection..."
+          echo "PR title: ${{ github.event.pull_request.title }}"
   setup:
     timeout-minutes: 60
     #needs: gate
