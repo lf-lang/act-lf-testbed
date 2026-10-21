@@ -208,7 +208,7 @@ jobs:
     runs-on: [self-hosted, linux, lf-act-rpi]
     needs: [getdockerimage]
     steps:
-      - name: Compile Blink - 1
+      - name: Compile Motor - 1
         working-directory: ${{ github.workspace }}/act-lf-testbed/lf-3pi-template
         #run: nix develop --command ${{ github.workspace }}/lingua-franca/bin/lfc-dev src/Blink_1.lf
         #run: docker run --rm "$IMAGE" lfc
