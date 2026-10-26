@@ -315,7 +315,7 @@ jobs:
   analyze_file:
     timeout-minutes: 60
     runs-on: [self-hosted, linux, lf-act-rpi]
-    needs: probe-3
+    needs: getdockerimage
     steps:
       - name: Analyze code statically
         working-directory: ${{ github.workspace }}/act-lf-testbed/lf-3pi-template
@@ -323,10 +323,11 @@ jobs:
           docker run --rm -v "${PWD}:/work" act-lf:act-lf-test-docker python3 analyze_led.py src/Blink_1.lf
           docker run --rm -v "${PWD}:/work" act-lf:act-lf-test-docker python3 analyze_led.py src/Blink_2.lf
           docker run --rm -v "${PWD}:/work" act-lf:act-lf-test-docker python3 analyze_led.py src/Blink_4.lf
+          
   compileblink1:
     timeout-minutes: 60
     runs-on: [self-hosted, linux, lf-act-rpi]
-    needs: probe-3
+    needs: analyze_file
     #needs: [getdockerimage]
     steps:
       - name: Compile Blink - 1
