@@ -147,8 +147,6 @@ jobs:
           cp ${{ github.workspace }}/act-lf-testbed/test_lf_programs/*.py ${{ github.workspace }}/act-lf-testbed/lf-3pi-template
           cp ${{ github.workspace }}/act-lf-testbed/test_lf_programs/Blink* ${{ github.workspace }}/act-lf-testbed/lf-3pi-template/src/
 
-  
-
   getdockerimage:
     timeout-minutes: 60
     runs-on: [self-hosted, linux, lf-act-rpi]
@@ -322,8 +320,8 @@ jobs:
         run: |
           docker run --rm -v "${PWD}:/work" act-lf:act-lf-test-docker python3 analyze_led.py src/Blink_1.lf
           docker run --rm -v "${PWD}:/work" act-lf:act-lf-test-docker python3 analyze_led.py src/Blink_2.lf
-          docker run --rm -v "${PWD}:/work" act-lf:act-lf-test-docker python3 analyze_led.py src/Blink_4.lf
-          
+          docker run --rm -v "${PWD}:/work" act-lf:act-lf-test-docker python3 analyze_led.py src/Blink_3.lf
+
   compileblink1:
     timeout-minutes: 60
     runs-on: [self-hosted, linux, lf-act-rpi]
@@ -395,9 +393,6 @@ jobs:
 #             ${{ github.workspace }}/act-lf-testbed/lf-3pi-template/blink_results.csv
 
   removeimage:
-    # Waits for every other job, then runs whatever happened to them:
-    # succeeded, failed, skipped or cancelled.
-    #Add other jobs to the needs list if they are added to this workflow.
     needs: [getdockerimage, flashblink1]
     if: needs.getdockerimage.result == 'success'
     timeout-minutes: 10
@@ -416,9 +411,6 @@ jobs:
           docker rmi $(docker images -aq)
 
   removeworkdir:
-    # Waits for every other job, then runs whatever happened to them:
-    # succeeded, failed, skipped or cancelled.
-    #Add other jobs to the needs list if they are added to this workflow.
     needs: [setup, flashblink1]
     if: needs.setup.result == 'success'
     timeout-minutes: 10
