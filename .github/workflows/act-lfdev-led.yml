@@ -12,7 +12,7 @@ on:
 jobs:
   setup:
     timeout-minutes: 60
-    runs-on: [self-hosted, linux, lf-act-ast]
+    runs-on: [self-hosted, linux, lf-act-rpi]
     strategy:
       matrix:
         python-version: ["3.10"]
@@ -81,7 +81,7 @@ jobs:
           git rev-list --count HEAD
 
   pythonpackages:
-    runs-on: [self-hosted, linux, lf-act-ast]
+    runs-on: [self-hosted, linux, lf-act-rpi]
     needs: setup
     strategy:
       matrix:
@@ -102,7 +102,7 @@ jobs:
           ls
 
   filecleanup:
-    runs-on: [self-hosted, linux, lf-act-ast]
+    runs-on: [self-hosted, linux, lf-act-rpi]
     needs: setup
     steps:
       #- uses: actions/checkout@v5
@@ -122,7 +122,7 @@ jobs:
 
   filesetup:
     #if: github.event.workflow_run.conclusion == 'success'
-    runs-on: [self-hosted, linux, lf-act-ast]
+    runs-on: [self-hosted, linux, lf-act-rpi]
     needs: filecleanup
     steps:
       - name: Copy Files
@@ -133,7 +133,7 @@ jobs:
           cp ${{ github.workspace }}/act-lf-testbed/test_lf_programs/Blink* ${{ github.workspace }}/act-lf-testbed/lf-3pi-template/src/
 
   compileblink1:
-    runs-on: [self-hosted, linux, lf-act-ast]
+    runs-on: [self-hosted, linux, lf-act-rpi]
     needs: [filesetup]
     steps:
       - name: Compile Blink - 1
@@ -141,7 +141,7 @@ jobs:
         run: nix develop --command ${{ github.workspace }}/lingua-franca/bin/lfc-dev src/Blink_1.lf
   
   flashblink1:
-    runs-on: [self-hosted, linux, lf-act-ast]
+    runs-on: [self-hosted, linux, lf-act-rpi]
     needs: [compileblink1]
     steps:
     - name: Flashing Blink
@@ -149,7 +149,7 @@ jobs:
       run: nix develop --command picotool load -x bin/Blink_1.elf -f
   
   runblink1:
-    runs-on: [self-hosted, linux, lf-act-ast]
+    runs-on: [self-hosted, linux, lf-act-rpi]
     needs: [flashblink1]
     steps:
       - name: Run Test
@@ -169,7 +169,7 @@ jobs:
 # fi
 
   plotgraph:
-    runs-on: [self-hosted, linux, lf-act-ast]
+    runs-on: [self-hosted, linux, lf-act-rpi]
     needs: [runblink1]
     if: |
       needs.runblink1.result == 'success' ||
@@ -184,7 +184,7 @@ jobs:
           python3 plot_led.py
        
   blinkreportupload:
-    runs-on: [self-hosted, linux, lf-act-ast]
+    runs-on: [self-hosted, linux, lf-act-rpi]
     needs: [plotgraph]
     steps:
       - name: Upload test reports

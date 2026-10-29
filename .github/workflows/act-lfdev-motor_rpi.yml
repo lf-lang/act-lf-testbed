@@ -1,10 +1,4 @@
-name: ACT_LFDEV_POLOLU 
-
-#on:
-#  workflow_run:
-#    workflows: ["ACT_LED_LF_POLOLU"]
-#    types:
-#      - completed
+name: ACT_LFDEV_MOTOR_POLOLU
 
 on:
   workflow_call:
@@ -17,6 +11,10 @@ on:
       act_private_key:
         description: 'ACT GitHub App Private Key'
         required: true
+
+concurrency:
+  group: per-user-${{ github.triggering_actor }}
+  queue: max
 
 jobs:
   gate:

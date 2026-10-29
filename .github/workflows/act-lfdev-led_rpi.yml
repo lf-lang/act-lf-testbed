@@ -12,6 +12,10 @@ on:
         description: 'ACT GitHub App Private Key'
         required: true
 
+concurrency:
+  group: per-user-${{ github.triggering_actor }}
+  queue: max
+
 jobs:
   gate:
     if: >-
