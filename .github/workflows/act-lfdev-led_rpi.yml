@@ -25,9 +25,33 @@ jobs:
       - run: |
           echo "Pull request #${{ github.event.pull_request.number }} may use the runner."
 
+  verifycredentials:
+    needs: gate
+    runs-on: ubuntu-latest
+    steps:
+      - name: Verify App credentials are present
+        env:
+          CLIENT_ID: ${{ inputs.act_client_id }}
+          PRIVATE_KEY: ${{ secrets.act_private_key }}
+        run: |
+          missing=0
+          if [ -z "$CLIENT_ID" ]; then
+            echo "::error::act_client_id is empty — the client-id input didn't resolve."
+            missing=1
+          fi
+          if [ -z "$PRIVATE_KEY" ]; then
+            echo "::error::act_private_key is empty — the private-key secret didn't resolve (not set at this scope, or withheld on a fork PR)."
+            missing=1
+          fi
+          if [ "$missing" -ne 0 ]; then
+            echo "::error::Skipping token minting. If this is a fork PR, secrets are withheld by design."
+            exit 1
+          fi
+          echo "Both credential inputs are present."
+
   setup:
     timeout-minutes: 60
-    needs: gate
+    needs: verifycredentials
     #if: github.event.workflow_run.conclusion == 'success'
     runs-on: [self-hosted, linux, lf-act-rpi]
     strategy:
@@ -201,118 +225,6 @@ jobs:
           github-token: ${{ steps.app-token.outputs.token }}
           path: ${{ runner.temp }}
       - run: docker load --input "$RUNNER_TEMP/image.tar"
-
-  # probe-1:
-  #   runs-on: [self-hosted, linux, lf-act-rpi]
-  #   needs: getdockerimage
-  #   steps:
-  #     - name: Who am I and can I reach the daemon
-  #       run: |
-  #         id
-  #         echo "--- socket presence/perms ---"
-  #         ls -l /var/run/docker.sock 2>&1 || echo "no socket at default path"
-  #         echo "--- am I in the docker group? ---"
-  #         groups
-  #         echo "--- can I talk to the daemon? ---"
-  #         docker version
-  #         docker info 2>&1 | head -n 20
-
-  # probe-2:
-  #   runs-on: [self-hosted, linux, lf-act-rpi]
-  #   needs: probe-1
-  #   steps:
-  #     - name: What can code inside the container reach (with host mounted)
-  #       run: |
-  #         set +e
-  #         docker run --rm \
-  #           -v /home/act-runner:/host-home:ro \
-  #           -v /dev:/host-dev:ro \
-  #           alpine sh -c '
-  #             echo "container uid: $(id -u)";
-  #             echo "=== runner creds via mount ===";
-  #             ls -la /host-home/actions-runner/.credentials* 2>/dev/null && echo "READABLE from container" || echo "not readable / not found here";
-  #             echo "=== camenv via mount ===";
-  #             ls -ld /host-home/camenv 2>/dev/null;
-  #             echo "=== hardware device nodes visible ===";
-  #             ls -la /host-dev/video* /host-dev/ttyACM* 2>/dev/null || echo "none mounted/visible";
-  #           '
-  #         exit 0
-
-  # probe-3:
-  #   runs-on: [self-hosted, linux, lf-act-rpi]
-  #   needs: probe-1
-  #   steps:
-  #     - name: Locate the runner dir and user-scoped assets (never fails)
-  #       run: |
-  #         set +e   # don't let a missing path kill the step
-  #         echo "=== who ==="
-  #         id; echo "HOME=$HOME"
-
-  #         echo "=== find the actions-runner directory ==="
-  #         # look in the usual spots, then fall back to a search under home
-  #         for d in "$HOME/actions-runner" /opt/actions-runner /home/act-runner/actions-runner; do
-  #           [ -d "$d" ] && echo "found: $d" && ls -la "$d"
-  #         done
-  #         echo "--- fallback search ---"
-  #         find "$HOME" /opt -maxdepth 3 -name ".credentials" 2>/dev/null
-  #         find "$HOME" /opt -maxdepth 3 -name "Runner.Listener" 2>/dev/null
-
-  #         echo "=== can the job read runner creds directly? ==="
-  #         for f in "$HOME"/actions-runner/.credentials /opt/actions-runner/.credentials; do
-  #           [ -f "$f" ] && echo "READABLE: $f" && stat -c '%A %U:%G %n' "$f"
-  #         done
-
-  #         echo "=== ssh material for the runner user ==="
-  #         ls -la "$HOME/.ssh/" 2>/dev/null || echo "no ~/.ssh"
-
-  #         echo "=== the shared python env jobs call directly ==="
-  #         ls -ld /home/act-runner/camenv 2>/dev/null
-  #         ls -la /home/act-runner/camenv/bin/ 2>/dev/null | head
-  #         [ -w /home/act-runner/camenv/bin ] && echo "WRITABLE by job — poisoning risk" || echo "camenv/bin not writable"
-
-  #         echo "=== attached hardware reachable from the job ==="
-  #         ls -la /dev/video* 2>/dev/null || echo "no /dev/video*"
-  #         ls -la /dev/ttyACM* /dev/ttyUSB* 2>/dev/null || echo "no serial devices visible"
-  #         groups
-  #         exit 0   # always succeed; this is an inventory step
-
-  # plant_canaries:
-  #   runs-on: [self-hosted, linux, lf-act-rpi]
-  #   needs: probe-3
-  #   steps:
-  #     - name: Plant synthetic canaries outside the workspace
-  #       run: |
-  #         set +e
-  #         STAMP="SYNTHETIC-CANARY-$(date +%s)-do-not-exfiltrate"
-  #         # a few locations at different trust levels, all owned by the runner user
-  #         for loc in "$HOME/.ci_canary" "/tmp/ci_canary" "/home/act-runner/ci_canary"; do
-  #           echo "$STAMP" > "$loc" 2>/dev/null && echo "planted: $loc" || echo "could not plant: $loc"
-  #         done
-  #         # record the expected hash so we can prove read-access without printing contents
-  #         sha256sum "$HOME/.ci_canary" /tmp/ci_canary 2>/dev/null
-  #         exit 0
-
-  # sandbox_probe:
-  #   runs-on: [self-hosted, linux, lf-act-rpi]
-  #   needs: plant_canaries
-  #   steps:
-  #     - name: Sandbox probe via compilation
-  #       working-directory: ${{ github.workspace }}/act-lf-testbed/lf-3pi-template
-  #       run: |
-  #         set +e
-  #         docker run --rm -v "${PWD}:/work" act-lf:act-lf-test-docker \
-  #           lfc src/Probe.lf 2>&1 | tee /tmp/probe.out
-  #         echo "=== CANARY summary ==="
-  #         grep "CANARY" /tmp/probe.out
-  #         exit 0
-
-  # remove_canaries:
-  #   runs-on: [self-hosted, linux, lf-act-rpi]
-  #   needs: plant_canaries:
-  #   steps:
-  #     - name: Remove synthetic canaries
-  #       if: always()
-  #       run: rm -f "$HOME/.ci_canary" /tmp/ci_canary /home/act-runner/ci_canary 2>/dev/null || true
 
   analyze_file:
     timeout-minutes: 60

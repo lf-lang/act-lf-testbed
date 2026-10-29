@@ -19,7 +19,7 @@ preamble {=
 =}
 
 main reactor {
-  timer t(0, 10 ms)
+  timer t(0, 500 ms)
   state led_on: bool = false
 
   reaction(startup) {=
