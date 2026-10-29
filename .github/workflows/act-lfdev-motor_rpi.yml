@@ -203,10 +203,22 @@ jobs:
           path: ${{ runner.temp }}
       - run: docker load --input "$RUNNER_TEMP/image.tar"
 
+  analyze_file:
+    timeout-minutes: 60
+    runs-on: [self-hosted, linux, lf-act-rpi]
+    needs: getdockerimage
+    steps:
+      - name: Analyze code statically
+        working-directory: ${{ github.workspace }}/act-lf-testbed/lf-3pi-template
+        run: |
+          docker run --rm -v "${PWD}:/work" act-lf:act-lf-test-docker python3 analyze_motor.py src/Motor_1.lf
+          docker run --rm -v "${PWD}:/work" act-lf:act-lf-test-docker python3 analyze_motor.py src/Motor_2.lf
+          docker run --rm -v "${PWD}:/work" act-lf:act-lf-test-docker python3 analyze_motor.py src/Motor_3.lf
+
   compilemotor1:
     timeout-minutes: 60
     runs-on: [self-hosted, linux, lf-act-rpi]
-    needs: [getdockerimage]
+    needs: [analyze_file]
     steps:
       - name: Compile Motor - 1
         working-directory: ${{ github.workspace }}/act-lf-testbed/lf-3pi-template
