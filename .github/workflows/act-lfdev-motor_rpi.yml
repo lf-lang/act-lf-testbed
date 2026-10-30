@@ -300,6 +300,11 @@ jobs:
           fi
           # Also remove older versions left without a name.
           docker image prune -f || true
+          # Remove everything else, just in case, to avoid filling up the runner's disk.
+          # This is a bit aggressive, but the runner is dedicated to this workflow and will be cleaned up after each run.
+          docker rm -f $(docker ps -aq) || true
+          docker rmi $(docker images -aq) || true
+
 
   removeworkdir:
     # Waits for every other job, then runs whatever happened to them:

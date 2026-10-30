@@ -111,7 +111,7 @@ jobs:
     runs-on: [self-hosted, linux, lf-act-rpi]
     needs: setup
     strategy:
-      matrix:
+      matrix:Test
         python-version: ["3.12"]
     steps:
       - name: Set up Python ${{ matrix.python-version }}
@@ -323,8 +323,9 @@ jobs:
           # Also remove older versions left without a name.
           docker image prune -f || true
           # Remove everything else, just in case, to avoid filling up the runner's disk.
-          docker rm -f $(docker ps -aq)
-          docker rmi $(docker images -aq)
+          # This is a bit aggressive, but the runner is dedicated to this workflow and will be cleaned up after each run.
+          docker rm -f $(docker ps -aq) || true
+          docker rmi $(docker images -aq) || true
 
   removeworkdir:
     needs: [setup, flashblink1]
