@@ -111,7 +111,7 @@ jobs:
     runs-on: [self-hosted, linux, lf-act-rpi]
     needs: setup
     strategy:
-      matrix:Test
+      matrix:
         python-version: ["3.12"]
     steps:
       - name: Set up Python ${{ matrix.python-version }}
