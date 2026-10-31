@@ -1,33 +1,4 @@
 #!/usr/bin/env python3
-"""Blink timing check for the Pololu 3pi+ 2040 LED blink program (Blink.lf).
-
-Blink.lf targets the RP2040, so it cannot run on this machine as-is. This script builds a host
-copy of it in a temporary directory, changing only two things:
-
-  * the `target C { platform: ... }` declaration is replaced with a host target, and
-  * <pico/stdlib.h> and <hardware/gpio.h> resolve to stand-in headers in which gpio_put() logs
-    the pin, the value and the logical time of each write instead of driving the LED.
-
-The timer, state and reactions compile unchanged. The host copy runs in fast mode (logical time
-does not wait for the wall clock, so the run takes milliseconds) for the observation time, and
-an external oracle checks the LED writes against this timing policy:
-
-  1. the LED starts blinking within the maximum period of startup,
-  2. every write toggles the LED (on, off, on, ...),
-  3. the time between consecutive writes is between the minimum and maximum period, and
-  4. the LED keeps blinking until the end of the run (no final gap over the maximum period).
-
-The period is the time between toggles, i.e. the timer period: Blink.lf's 250 ms means 250 ms
-on, 250 ms off. A timer whose period is 0 (or missing) fires only once, so it fails rule 4.
-
-Each option can also be set with the environment variable named in its help, as with the shell
-version of this check (MIN_PERIOD_MS=200 python3 run_blink_timing_check.py ...); an option given
-on the command line takes precedence. Needs Python 3.8 or newer and lfc.
-
-Exit status: 0 = blink timing legal, 1 = illegal blink timing detected,
-             2 = the check could not be completed (missing tool, build or run failure).
-"""
-
 from __future__ import annotations
 
 import argparse
@@ -97,7 +68,7 @@ def build_parser() -> argparse.ArgumentParser:
                              "(default: $MIN_PERIOD_MS, else 100)")
     parser.add_argument("--max-period-ms", type=whole_ms, metavar="MS",
                         help="longest legal time between LED toggles "
-                             "(default: $MAX_PERIOD_MS, else 2000)")
+                             "(default: $MAX_PERIOD_MS, else 1000)")
     parser.add_argument("--observe-ms", type=whole_ms, metavar="MS",
                         help="logical time to run the program "
                              "(default: $OBSERVE_MS, else 5 x the maximum period)")
@@ -128,7 +99,7 @@ def setting_ms(option: int | None, env_name: str, default: int) -> int:
 def check(args: argparse.Namespace, prog: str) -> int:
     """Run the whole check. Return 0 (legal timing) or 1 (illegal timing), or raise CheckError."""
     min_ms = setting_ms(args.min_period_ms, "MIN_PERIOD_MS", 100)
-    max_ms = setting_ms(args.max_period_ms, "MAX_PERIOD_MS", 2000)
+    max_ms = setting_ms(args.max_period_ms, "MAX_PERIOD_MS", 1000)
     observe_ms = setting_ms(args.observe_ms, "OBSERVE_MS", 5 * max_ms)
     lfc = args.lfc or os.environ.get("LFC") or "lfc"
     if min_ms > max_ms:
